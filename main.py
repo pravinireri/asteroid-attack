@@ -14,14 +14,15 @@ background = pygame.image.load('background.png')
 # Background Sound
 mixer.music.load('background.wav')
 mixer.music.play(-1)
+mixer.music.set_volume(0.5)
 
 # Title & Icon
 pygame.display.set_caption('Asteroid Attack')
-icon = pygame.image.load('asteroid.png')
+icon = pygame.image.load('asteroid1.png')
 pygame.display.set_icon(icon)
 
 # Player
-playerImg = pygame.image.load('spaceship.png')
+playerImg = pygame.image.load('spaceship3.png')
 playerX = 370
 playerY = 480
 playerX_change = 0
@@ -33,8 +34,9 @@ enemyY = []
 enemyY_change = []
 num_of_enemies = 2
 
+asteroid_images = ['asteroid1.png', 'asteroid2.png', 'asteroid3.png']
 for i in range(num_of_enemies):
-    enemyImg.append(pygame.image.load('asteroid.png'))
+    enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
     enemyX.append(random.randint(0, 765))
     enemyY.append(random.randint(0, 50))
     enemyY_change.append(0.75)
@@ -43,18 +45,22 @@ for i in range(num_of_enemies):
 projectileImg = pygame.image.load('projectile.png')
 projectileX = 370
 projectileY = 480
-projectileY_change = 2
+projectileY_change = 3
 projectile_status = "ready"
 
 # Score
 score_value = 0
+high_score = 0
+
 font = pygame.font.Font('freesansbold.ttf', 30)
+score_font = pygame.font.Font('freesansbold.ttf', 42)
 
 textX = 10
 textY = 10
 
 # Game Over
 over_font = pygame.font.Font('freesansbold.ttf', 64)
+gameover = False
 
 
 def show_score(x, y):
@@ -63,11 +69,23 @@ def show_score(x, y):
 
 
 def game_over_text():
+    global gameover
     over_text = over_font.render("GAME OVER", True, (255, 255, 255))
     screen.blit(over_text, (200, 250))
     # game_over_sound = mixer.Sound('game_over.wav')
     # game_over_sound.play()
     pygame.mixer.music.stop()
+    gameover = True
+
+
+def high_score_text():
+    global high_score
+    global score_value
+    if score_value > high_score:
+        high_score = score_value
+
+    score_text = score_font.render("High Score: " + str(high_score), True, (255, 255, 255))
+    screen.blit(score_text, (270, 320))
 
 
 def player(x, y):
@@ -116,12 +134,23 @@ while running:
                 if projectile_status == "ready":
                     projectile_Sound = mixer.Sound('laser.wav')
                     projectile_Sound.play()
+                    projectile_Sound.set_volume(0.25)
                     projectileX = playerX
                     fire_projectile(projectileX, projectileY)
             if event.key == pygame.K_ESCAPE:
                 running = False
         if event.type == pygame.KEYUP:
             playerX_change = 0
+            if event.key == pygame.K_SPACE and gameover:
+                projectile_status = "ready"
+                score_value = 0
+                gameover = False
+                mixer.music.play(-1)
+                playerX = 370
+                playerY = 480
+                for i in range(num_of_enemies):
+                    enemyX[i] = (random.randint(0, 765))
+                    enemyY[i] = (random.randint(0, 50))
 
     playerX += playerX_change
 
@@ -138,6 +167,7 @@ while running:
             for j in range(num_of_enemies):
                 enemyY[j] = 2000
             game_over_text()
+            high_score_text()
             break
 
         # Enemy Movement
@@ -151,11 +181,13 @@ while running:
         if collision:
             collision_Sound = mixer.Sound('explosion.wav')
             collision_Sound.play()
+            collision_Sound.set_volume(0.7)
             projectileY = 480
             projectile_status = "ready"
             score_value += 1
             enemyX[i] = random.randint(0, 765)
             enemyY[i] = random.randint(0, 50)
+            enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
 
         enemy(enemyX[i], enemyY[i], i)
 
