@@ -56,14 +56,17 @@ score_value = 0
 high_score = 0
 
 font = pygame.font.Font('freesansbold.ttf', 30)
-score_font = pygame.font.Font('freesansbold.ttf', 42)
+score_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 42)
 
 textX = 10
 textY = 10
 
 # Game Over
-over_font = pygame.font.Font('freesansbold.ttf', 64)
+over_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 64)
 gameover = False
+
+# Play Again
+again_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 24)
 
 # Main Menu
 menu_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 50)
@@ -137,13 +140,19 @@ def game_over_text():
     global high_score
     global score_value
     over_text = over_font.render("GAME OVER", True, (255, 255, 255))
-    screen.blit(over_text, (200, 250))
+    over_text_rect = over_text.get_rect(center = (400, 250))
+    screen.blit(over_text, over_text_rect)
 
     if score_value > high_score:
         high_score = score_value
 
     score_text = score_font.render("High Score: " + str(high_score), True, (255, 255, 255))
-    screen.blit(score_text, (270, 320))
+    score_text_rect = score_text.get_rect(center = (400, 300))
+    screen.blit(score_text, score_text_rect)
+
+    play_again_text = again_font.render("Press 'E' to play again", True, (255, 255, 255))
+    play_again_text_rect = play_again_text.get_rect(center = (400, 340))
+    screen.blit(play_again_text, play_again_text_rect)
 
     # game_over_sound = mixer.Sound('game_over.wav')
     # game_over_sound.play()
@@ -190,11 +199,11 @@ def game():
                 running = False
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_LEFT and not gameover:
                     playerX_change = -3
-                if event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_RIGHT and not gameover:
                     playerX_change = 3
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_SPACE and not gameover:
                     if projectile_status == "ready":
                         projectile_Sound = mixer.Sound('./assets/music/laser.wav')
                         projectile_Sound.play()
@@ -207,7 +216,7 @@ def game():
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
                     playerX_change = 0
-                if event.key == pygame.K_SPACE and gameover:
+                if event.key == pygame.K_e and gameover:
                     projectile_status = "ready"
                     score_value = 0
                     gameover = False
@@ -226,7 +235,7 @@ def game():
             playerX = 736
 
         for i in range(num_of_enemies):
-            if enemyY[i] > 440:
+            if enemyY[i] > 500:
                 for j in range(num_of_enemies):
                     enemyY[j] = 2000
                 game_over_text()
