@@ -53,7 +53,13 @@ projectile_status = "ready"
 
 # Score
 score_value = 0
-high_score = 0
+
+try:
+    with open('file.txt', 'r') as file:
+        content = file.read()
+    high_score = int(content)
+except(ValueError, FileNotFoundError):
+    high_score = 0
 
 font = pygame.font.Font('freesansbold.ttf', 30)
 score_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 42)
@@ -127,7 +133,6 @@ def main_menu():
 
         pygame.display.update()
         clock.tick(60)
-
 
 
 def show_score(x, y):
@@ -239,6 +244,8 @@ def game():
                 for j in range(num_of_enemies):
                     enemyY[j] = 2000
                 game_over_text()
+                with open('file.txt', 'w') as file:
+                    file.write(str(high_score))
                 break
 
             enemyY[i] += enemyY_change[i]
