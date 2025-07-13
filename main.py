@@ -16,8 +16,8 @@ background = pygame.image.load('./assets/images/background.png')
 
 # Background Sound
 mixer.music.load('./assets/music/background.wav')
-mixer.music.play(-1)
 mixer.music.set_volume(0.5)
+music_stopped = False
 
 # Title & Icon
 pygame.display.set_caption('Asteroid Attack')
@@ -80,6 +80,12 @@ menu_font_2 = pygame.font.Font('./assets/fonts/Poppins-MediumItalic.ttf', 42)
 menu_font_3 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 36)
 click = False
 
+# Instructions
+instructions_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 50)
+instructions_font2 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 36)
+instructions_font3 = pygame.font.Font('./assets/fonts/Anton-Regular.ttf', 40)
+new_click = False
+
 
 def main_menu():
     global click
@@ -105,7 +111,7 @@ def main_menu():
         if button_play.collidepoint((mx, my)):
             pygame.draw.rect(screen, (45, 55, 85), button_play, border_radius=10)
             if click:
-                game()
+                instructions_screen()
                 click = False
         else:
             pygame.draw.rect(screen, (60, 70, 100), button_play, border_radius=10)
@@ -130,6 +136,61 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     click = True
+
+        pygame.display.update()
+        clock.tick(60)
+
+
+def instructions_screen():
+    global new_click
+    new_click = False
+    instructions_bg = pygame.image.load('./assets/images/menu_bg.png')
+    while True:
+        screen.blit(instructions_bg, (0, 0))
+
+        # Text
+        instructions_title = instructions_font.render("HOW TO PLAY", True, (255, 255, 255))
+        screen.blit(instructions_title, instructions_title.get_rect(center = (400, 90)))
+
+        instructions_text = [
+            "Move: Left and Right Arrow Keys",
+            "Shoot: Press SPACE",
+            "One shot at a time!",
+            "Mute/Unmute Music: Press M",
+            "Restart: Press E after Game Over",
+            "Quit: Press ESC anytime",
+        ]
+
+        for i, line in enumerate(instructions_text):
+            text = instructions_font2.render(line, True, (255, 255, 255))
+            screen.blit(text, text.get_rect(center = (400, 200 + i * 38)))
+
+        # Mouse Position
+        mx, my = pygame.mouse.get_pos()
+
+        # Button
+        continue_button = pygame.Rect(300, 480, 200, 50)
+
+        if continue_button.collidepoint((mx, my)):
+                pygame.draw.rect(screen, (45, 55, 85), continue_button, border_radius = 10)
+                if new_click:
+                    game()
+                    new_click = False
+                else:
+                    pygame.draw.rect(screen, (60, 70, 100), continue_button, border_radius = 10)
+
+        continue_text = instructions_font2.render("Continue", True, (255, 255, 255))
+        screen.blit(continue_text, continue_text.get_rect(center = (continue_button.center)))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    main_menu()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    new_click = True
 
         pygame.display.update()
         clock.tick(60)
@@ -191,6 +252,9 @@ def isCollision(enemyX, enemyY, projectileX, projectileY):
 def game():
     global playerX, playerY, playerX_change
     global projectileX, projectileY, projectile_status, score_value, gameover
+    global music_stopped
+
+    mixer.music.play(-1)
 
     running = True
     while running:
@@ -215,6 +279,12 @@ def game():
                         projectile_Sound.set_volume(0.25)
                         projectileX = playerX
                         fire_projectile(projectileX, projectileY)
+                if event.key == pygame.K_m and not music_stopped:
+                    mixer.music.stop()
+                    music_stopped = True
+                if event.key == pygame.K_m and music_stopped:
+                    mixer.music.play()
+                    music_stopped == False
                 if event.key == pygame.K_ESCAPE:
                     running = False
 
@@ -277,4 +347,5 @@ def game():
         player(playerX, playerY)
         show_score(textX, textY)
         pygame.display.update()
+        clock.tick(60)
 main_menu()
