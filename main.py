@@ -42,13 +42,13 @@ for i in range(num_of_enemies):
     enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
     enemyX.append(random.randint(0, 765))
     enemyY.append(random.randint(0, 50))
-    enemyY_change.append(0.75)
+    enemyY_change.append(2)
 
 # Projectile
 projectileImg = pygame.image.load('./assets/images/projectile.png')
 projectileX = 370
 projectileY = 480
-projectileY_change = 3
+projectileY_change = 6
 projectile_status = "ready"
 
 # Score
@@ -172,12 +172,12 @@ def instructions_screen():
         continue_button = pygame.Rect(300, 480, 200, 50)
 
         if continue_button.collidepoint((mx, my)):
-                pygame.draw.rect(screen, (45, 55, 85), continue_button, border_radius = 10)
-                if new_click:
-                    game()
-                    new_click = False
-                else:
-                    pygame.draw.rect(screen, (60, 70, 100), continue_button, border_radius = 10)
+            pygame.draw.rect(screen, (45, 55, 85), continue_button, border_radius = 10)
+            if new_click:
+                game()
+                new_click = False
+        else:
+            pygame.draw.rect(screen, (60, 70, 100), continue_button, border_radius = 10)
 
         continue_text = instructions_font2.render("Continue", True, (255, 255, 255))
         screen.blit(continue_text, continue_text.get_rect(center = (continue_button.center)))
@@ -265,13 +265,13 @@ def game():
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                quit()
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT and not gameover:
-                    playerX_change = -3
+                    playerX_change = -7
                 if event.key == pygame.K_RIGHT and not gameover:
-                    playerX_change = 3
+                    playerX_change = 7
                 if event.key == pygame.K_SPACE and not gameover:
                     if projectile_status == "ready":
                         projectile_Sound = mixer.Sound('./assets/music/laser.wav')
