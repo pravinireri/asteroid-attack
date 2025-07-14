@@ -97,6 +97,11 @@ level_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 50)
 levels_font = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 36)
 level_click = False
 
+# Lives
+livesImg = pygame.image.load('./assets/images/heart.png')
+lives = 3
+lives_shown = [True, True, True]
+
 
 def main_menu():
     global click
@@ -374,6 +379,9 @@ def level1():
     global music_stopped
     global num_of_enemies, asteroid_images
     global projectileY_change
+    global lives, livesImg, lives_shown
+
+    music_stopped = False
 
     projectileY_change = 7
     
@@ -412,7 +420,7 @@ def level1():
                 if event.key == pygame.K_m and not music_stopped:
                     mixer.music.stop()
                     music_stopped = True
-                if event.key == pygame.K_m and music_stopped:
+                elif event.key == pygame.K_m and music_stopped:
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
@@ -424,6 +432,8 @@ def level1():
                 if event.key == pygame.K_e and gameover:
                     projectile_status = "ready"
                     score_value = 0
+                    lives = 3
+                    lives_shown = [True, True, True]
                     gameover = False
                     mixer.music.play(-1)
                     playerX = 370
@@ -439,19 +449,36 @@ def level1():
         elif playerX >= 736:
             playerX = 736
 
+        if lives == 2:
+            lives_shown = [False, True, True]
+        if lives == 1:
+            lives_shown = [False, False, True]
+        if lives == 0:
+            lives_shown = [False, False, False]
+
+        if lives_shown[0]:
+            screen.blit(livesImg, (680, 12))
+        if lives_shown[1]:
+            screen.blit(livesImg, (720, 12))
+        if lives_shown[2] and lives >= 1:
+            screen.blit(livesImg, (760, 12))
+
+        
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
-                for j in range(num_of_enemies):
-                    enemyY[j] = 2000
-                game_over_text()
-                with open('file.txt', 'w') as file:
-                    file.write(str(high_score))
-                break
+                if lives == 1:
+                    for j in range(num_of_enemies):
+                        enemyY[j] = 2000
+                    game_over_text()
+                    with open('file.txt', 'w') as file:
+                        file.write(str(high_score))
+                    break
 
             enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 600:
+            if enemyY[i] >= 520:
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
+                lives -= 1
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -487,6 +514,7 @@ def level2():
     global projectileX, projectileY, projectile_status, score_value, gameover
     global music_stopped
     global projectileY_change
+    global lives, livesImg, lives_shown
 
     projectileY_change = 8
 
@@ -526,7 +554,7 @@ def level2():
                 if event.key == pygame.K_m and not music_stopped:
                     mixer.music.stop()
                     music_stopped = True
-                if event.key == pygame.K_m and music_stopped:
+                elif event.key == pygame.K_m and music_stopped:
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
@@ -538,6 +566,8 @@ def level2():
                 if event.key == pygame.K_e and gameover:
                     projectile_status = "ready"
                     score_value = 0
+                    lives = 3
+                    lives_shown = [True, True, True]
                     gameover = False
                     mixer.music.play(-1)
                     playerX = 370
@@ -553,19 +583,36 @@ def level2():
         elif playerX >= 736:
             playerX = 736
 
+        if lives == 2:
+            lives_shown = [False, True, True]
+        if lives == 1:
+            lives_shown = [False, False, True]
+        if lives == 0:
+            lives_shown = [False, False, False]
+
+        if lives_shown[0]:
+            screen.blit(livesImg, (680, 12))
+        if lives_shown[1]:
+            screen.blit(livesImg, (720, 12))
+        if lives_shown[2] and lives >= 1:
+            screen.blit(livesImg, (760, 12))
+
+        
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
-                for j in range(num_of_enemies):
-                    enemyY[j] = 2000
-                game_over_text()
-                with open('file.txt', 'w') as file:
-                    file.write(str(high_score))
-                break
+                if lives == 1:
+                    for j in range(num_of_enemies):
+                        enemyY[j] = 2000
+                    game_over_text()
+                    with open('file.txt', 'w') as file:
+                        file.write(str(high_score))
+                    break
 
             enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 600:
+            if enemyY[i] >= 520:
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
+                lives -= 1
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -600,6 +647,7 @@ def level3():
     global projectileX, projectileY, projectile_status, score_value, gameover
     global music_stopped
     global projectileY_change
+    global lives, livesImg, lives_shown
 
     projectileY_change = 9
 
@@ -639,7 +687,7 @@ def level3():
                 if event.key == pygame.K_m and not music_stopped:
                     mixer.music.stop()
                     music_stopped = True
-                if event.key == pygame.K_m and music_stopped:
+                elif event.key == pygame.K_m and music_stopped:
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
@@ -651,6 +699,8 @@ def level3():
                 if event.key == pygame.K_e and gameover:
                     projectile_status = "ready"
                     score_value = 0
+                    lives = 3
+                    lives_shown = [True, True, True]
                     gameover = False
                     mixer.music.play(-1)
                     playerX = 370
@@ -666,19 +716,36 @@ def level3():
         elif playerX >= 736:
             playerX = 736
 
+        if lives == 2:
+            lives_shown = [False, True, True]
+        if lives == 1:
+            lives_shown = [False, False, True]
+        if lives == 0:
+            lives_shown = [False, False, False]
+
+        if lives_shown[0]:
+            screen.blit(livesImg, (680, 12))
+        if lives_shown[1]:
+            screen.blit(livesImg, (720, 12))
+        if lives_shown[2] and lives >= 1:
+            screen.blit(livesImg, (760, 12))
+
+        
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
-                for j in range(num_of_enemies):
-                    enemyY[j] = 2000
-                game_over_text()
-                with open('file.txt', 'w') as file:
-                    file.write(str(high_score))
-                break
+                if lives == 1:
+                    for j in range(num_of_enemies):
+                        enemyY[j] = 2000
+                    game_over_text()
+                    with open('file.txt', 'w') as file:
+                        file.write(str(high_score))
+                    break
 
             enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 600:
+            if enemyY[i] >= 520:
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
+                lives -= 1
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -713,6 +780,7 @@ def level4():
     global projectileX, projectileY, projectile_status, score_value, gameover
     global music_stopped
     global projectileY_change
+    global lives, livesImg, lives_shown
 
     projectileY_change = 10
 
@@ -752,7 +820,7 @@ def level4():
                 if event.key == pygame.K_m and not music_stopped:
                     mixer.music.stop()
                     music_stopped = True
-                if event.key == pygame.K_m and music_stopped:
+                elif event.key == pygame.K_m and music_stopped:
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
@@ -764,6 +832,8 @@ def level4():
                 if event.key == pygame.K_e and gameover:
                     projectile_status = "ready"
                     score_value = 0
+                    lives = 3
+                    lives_shown = [True, True, True]
                     gameover = False
                     mixer.music.play(-1)
                     playerX = 370
@@ -779,19 +849,36 @@ def level4():
         elif playerX >= 736:
             playerX = 736
 
+        if lives == 2:
+            lives_shown = [False, True, True]
+        if lives == 1:
+            lives_shown = [False, False, True]
+        if lives == 0:
+            lives_shown = [False, False, False]
+
+        if lives_shown[0]:
+            screen.blit(livesImg, (680, 12))
+        if lives_shown[1]:
+            screen.blit(livesImg, (720, 12))
+        if lives_shown[2] and lives >= 1:
+            screen.blit(livesImg, (760, 12))
+
+        
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
-                for j in range(num_of_enemies):
-                    enemyY[j] = 2000
-                game_over_text()
-                with open('file.txt', 'w') as file:
-                    file.write(str(high_score))
-                break
+                if lives == 1:
+                    for j in range(num_of_enemies):
+                        enemyY[j] = 2000
+                    game_over_text()
+                    with open('file.txt', 'w') as file:
+                        file.write(str(high_score))
+                    break
 
             enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 600:
+            if enemyY[i] >= 520:
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
+                lives -= 1
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -826,6 +913,7 @@ def level5():
     global projectileX, projectileY, projectile_status, score_value, gameover
     global music_stopped
     global projectileY_change
+    global lives, livesImg, lives_shown
 
     projectileY_change = 11
 
@@ -865,7 +953,7 @@ def level5():
                 if event.key == pygame.K_m and not music_stopped:
                     mixer.music.stop()
                     music_stopped = True
-                if event.key == pygame.K_m and music_stopped:
+                elif event.key == pygame.K_m and music_stopped:
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
@@ -877,6 +965,8 @@ def level5():
                 if event.key == pygame.K_e and gameover:
                     projectile_status = "ready"
                     score_value = 0
+                    lives = 3
+                    lives_shown = [True, True, True]
                     gameover = False
                     mixer.music.play(-1)
                     playerX = 370
@@ -892,19 +982,36 @@ def level5():
         elif playerX >= 736:
             playerX = 736
 
+        if lives == 2:
+            lives_shown = [False, True, True]
+        if lives == 1:
+            lives_shown = [False, False, True]
+        if lives == 0:
+            lives_shown = [False, False, False]
+
+        if lives_shown[0]:
+            screen.blit(livesImg, (680, 12))
+        if lives_shown[1]:
+            screen.blit(livesImg, (720, 12))
+        if lives_shown[2] and lives >= 1:
+            screen.blit(livesImg, (760, 12))
+
+        
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
-                for j in range(num_of_enemies):
-                    enemyY[j] = 2000
-                game_over_text()
-                with open('file.txt', 'w') as file:
-                    file.write(str(high_score))
-                break
+                if lives == 1:
+                    for j in range(num_of_enemies):
+                        enemyY[j] = 2000
+                    game_over_text()
+                    with open('file.txt', 'w') as file:
+                        file.write(str(high_score))
+                    break
 
             enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 600:
+            if enemyY[i] >= 520:
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
+                lives -= 1
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -939,6 +1046,7 @@ def level6():
     global projectileX, projectileY, projectile_status, score_value, gameover
     global music_stopped
     global projectileY_change
+    global lives, livesImg, lives_shown
 
     projectileY_change = 12
 
@@ -978,7 +1086,7 @@ def level6():
                 if event.key == pygame.K_m and not music_stopped:
                     mixer.music.stop()
                     music_stopped = True
-                if event.key == pygame.K_m and music_stopped:
+                elif event.key == pygame.K_m and music_stopped:
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
@@ -990,6 +1098,8 @@ def level6():
                 if event.key == pygame.K_e and gameover:
                     projectile_status = "ready"
                     score_value = 0
+                    lives = 3
+                    lives_shown = [True, True, True]
                     gameover = False
                     mixer.music.play(-1)
                     playerX = 370
@@ -1005,19 +1115,36 @@ def level6():
         elif playerX >= 736:
             playerX = 736
 
+        if lives == 2:
+            lives_shown = [False, True, True]
+        if lives == 1:
+            lives_shown = [False, False, True]
+        if lives == 0:
+            lives_shown = [False, False, False]
+
+        if lives_shown[0]:
+            screen.blit(livesImg, (680, 12))
+        if lives_shown[1]:
+            screen.blit(livesImg, (720, 12))
+        if lives_shown[2] and lives >= 1:
+            screen.blit(livesImg, (760, 12))
+
+        
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
-                for j in range(num_of_enemies):
-                    enemyY[j] = 2000
-                game_over_text()
-                with open('file.txt', 'w') as file:
-                    file.write(str(high_score))
-                break
+                if lives == 1:
+                    for j in range(num_of_enemies):
+                        enemyY[j] = 2000
+                    game_over_text()
+                    with open('file.txt', 'w') as file:
+                        file.write(str(high_score))
+                    break
 
             enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 600:
+            if enemyY[i] >= 520:
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
+                lives -= 1
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
