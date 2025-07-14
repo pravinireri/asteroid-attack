@@ -47,7 +47,7 @@ asteroid_images = ['./assets/images/asteroid1.png', './assets/images/asteroid2.p
 for i in range(num_of_enemies):
     enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
     enemyX.append(random.randint(0, 765))
-    enemyY.append(random.randint(0, 50))
+    enemyY.append(random.randint(0, 200))
     enemyY_change.append(2)
 
 # Projectile
@@ -254,6 +254,7 @@ def levels():
         if level3_button.collidepoint((mx, my)):
             pygame.draw.circle(screen, (45, 55, 85), (level3_button.center), 40)
             if level_click:
+                level3()
                 level_click = False
         else:
             pygame.draw.circle(screen, (60, 70, 100), (level3_button.center), 40)
@@ -262,6 +263,7 @@ def levels():
         if level4_button.collidepoint((mx, my)):
             pygame.draw.circle(screen, (45, 55, 85), (level4_button.center), 40)
             if level_click:
+                level4()
                 level_click = False
         else:
             pygame.draw.circle(screen, (60, 70, 100), (level4_button.center), 40)
@@ -270,6 +272,7 @@ def levels():
         if level5_button.collidepoint((mx, my)):
             pygame.draw.circle(screen, (45, 55, 85), (level5_button.center), 40)
             if level_click:
+                level5()
                 level_click = False
         else:
             pygame.draw.circle(screen, (60, 70, 100), (level5_button.center), 40)
@@ -278,6 +281,7 @@ def levels():
         if level6_button.collidepoint((mx, my)):
             pygame.draw.circle(screen, (45, 55, 85), (level6_button.center), 40)
             if level_click:
+                level6()
                 level_click = False
         else:
             pygame.draw.circle(screen, (60, 70, 100), (level6_button.center), 40)
@@ -369,7 +373,10 @@ def level1():
     global projectileX, projectileY, projectile_status, score_value, gameover
     global music_stopped
     global num_of_enemies, asteroid_images
+    global projectileY_change
 
+    projectileY_change = 7
+    
     mixer.music.play(-1)
 
     num_of_enemies = 1
@@ -499,6 +506,458 @@ def level2():
         # Background Color (rgb)
         screen.fill((0, 0, 0))
         screen.blit(background2, (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT and not gameover:
+                    playerX_change = -7
+                if event.key == pygame.K_RIGHT and not gameover:
+                    playerX_change = 7
+                if event.key == pygame.K_SPACE and not gameover:
+                    if projectile_status == "ready":
+                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
+                        projectile_Sound.play()
+                        projectile_Sound.set_volume(0.25)
+                        projectileX = playerX
+                        fire_projectile(projectileX, projectileY)
+                if event.key == pygame.K_m and not music_stopped:
+                    mixer.music.stop()
+                    music_stopped = True
+                if event.key == pygame.K_m and music_stopped:
+                    mixer.music.play()
+                    music_stopped = False
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    playerX_change = 0
+                if event.key == pygame.K_e and gameover:
+                    projectile_status = "ready"
+                    score_value = 0
+                    gameover = False
+                    mixer.music.play(-1)
+                    playerX = 370
+                    playerY = 480
+                    for i in range(num_of_enemies):
+                        enemyX[i] = random.randint(0, 765)
+                        enemyY[i] = random.randint(0, 50)
+
+        playerX += playerX_change
+
+        if playerX <= 0:
+            playerX = 0
+        elif playerX >= 736:
+            playerX = 736
+
+        for i in range(num_of_enemies):
+            if enemyY[i] > 500:
+                for j in range(num_of_enemies):
+                    enemyY[j] = 2000
+                game_over_text()
+                with open('file.txt', 'w') as file:
+                    file.write(str(high_score))
+                break
+
+            enemyY[i] += enemyY_change[i]
+            if enemyY[i] >= 600:
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+
+            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
+                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
+                collision_Sound.play()
+                collision_Sound.set_volume(0.7)
+                projectileY = 480
+                projectile_status = "ready"
+                score_value += 1
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
+
+            enemy(enemyX[i], enemyY[i], i)
+
+        if projectileY <= 0:
+            projectileY = 480
+            projectile_status = "ready"
+
+        if projectile_status == "fire":
+            fire_projectile(projectileX, projectileY)
+            projectileY -= projectileY_change
+
+        player(playerX, playerY)
+        show_score(textX, textY)
+        pygame.display.update()
+        clock.tick(60)
+
+
+# Level Three
+def level3():
+    global playerX, playerY, playerX_change
+    global projectileX, projectileY, projectile_status, score_value, gameover
+    global music_stopped
+    global projectileY_change
+
+    projectileY_change = 9
+
+    mixer.music.play(-1)
+
+    num_of_enemies = 3
+    for i in range(num_of_enemies):
+        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
+        enemyX.append(random.randint(0, 765))
+        enemyY.append(random.randint(0, 50))
+        enemyY_change.append(2)
+
+
+    running = True
+    while running:
+
+        # Background Color (rgb)
+        screen.fill((0, 0, 0))
+        screen.blit(background3, (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT and not gameover:
+                    playerX_change = -7
+                if event.key == pygame.K_RIGHT and not gameover:
+                    playerX_change = 7
+                if event.key == pygame.K_SPACE and not gameover:
+                    if projectile_status == "ready":
+                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
+                        projectile_Sound.play()
+                        projectile_Sound.set_volume(0.25)
+                        projectileX = playerX
+                        fire_projectile(projectileX, projectileY)
+                if event.key == pygame.K_m and not music_stopped:
+                    mixer.music.stop()
+                    music_stopped = True
+                if event.key == pygame.K_m and music_stopped:
+                    mixer.music.play()
+                    music_stopped = False
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    playerX_change = 0
+                if event.key == pygame.K_e and gameover:
+                    projectile_status = "ready"
+                    score_value = 0
+                    gameover = False
+                    mixer.music.play(-1)
+                    playerX = 370
+                    playerY = 480
+                    for i in range(num_of_enemies):
+                        enemyX[i] = random.randint(0, 765)
+                        enemyY[i] = random.randint(0, 50)
+
+        playerX += playerX_change
+
+        if playerX <= 0:
+            playerX = 0
+        elif playerX >= 736:
+            playerX = 736
+
+        for i in range(num_of_enemies):
+            if enemyY[i] > 500:
+                for j in range(num_of_enemies):
+                    enemyY[j] = 2000
+                game_over_text()
+                with open('file.txt', 'w') as file:
+                    file.write(str(high_score))
+                break
+
+            enemyY[i] += enemyY_change[i]
+            if enemyY[i] >= 600:
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+
+            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
+                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
+                collision_Sound.play()
+                collision_Sound.set_volume(0.7)
+                projectileY = 480
+                projectile_status = "ready"
+                score_value += 1
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
+
+            enemy(enemyX[i], enemyY[i], i)
+
+        if projectileY <= 0:
+            projectileY = 480
+            projectile_status = "ready"
+
+        if projectile_status == "fire":
+            fire_projectile(projectileX, projectileY)
+            projectileY -= projectileY_change
+
+        player(playerX, playerY)
+        show_score(textX, textY)
+        pygame.display.update()
+        clock.tick(60)
+
+
+# Level Four
+def level4():
+    global playerX, playerY, playerX_change
+    global projectileX, projectileY, projectile_status, score_value, gameover
+    global music_stopped
+    global projectileY_change
+
+    projectileY_change = 10
+
+    mixer.music.play(-1)
+
+    num_of_enemies = 4
+    for i in range(num_of_enemies):
+        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
+        enemyX.append(random.randint(0, 765))
+        enemyY.append(random.randint(0, 50))
+        enemyY_change.append(2)
+
+
+    running = True
+    while running:
+
+        # Background Color (rgb)
+        screen.fill((0, 0, 0))
+        screen.blit(background4, (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT and not gameover:
+                    playerX_change = -7
+                if event.key == pygame.K_RIGHT and not gameover:
+                    playerX_change = 7
+                if event.key == pygame.K_SPACE and not gameover:
+                    if projectile_status == "ready":
+                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
+                        projectile_Sound.play()
+                        projectile_Sound.set_volume(0.25)
+                        projectileX = playerX
+                        fire_projectile(projectileX, projectileY)
+                if event.key == pygame.K_m and not music_stopped:
+                    mixer.music.stop()
+                    music_stopped = True
+                if event.key == pygame.K_m and music_stopped:
+                    mixer.music.play()
+                    music_stopped = False
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    playerX_change = 0
+                if event.key == pygame.K_e and gameover:
+                    projectile_status = "ready"
+                    score_value = 0
+                    gameover = False
+                    mixer.music.play(-1)
+                    playerX = 370
+                    playerY = 480
+                    for i in range(num_of_enemies):
+                        enemyX[i] = random.randint(0, 765)
+                        enemyY[i] = random.randint(0, 50)
+
+        playerX += playerX_change
+
+        if playerX <= 0:
+            playerX = 0
+        elif playerX >= 736:
+            playerX = 736
+
+        for i in range(num_of_enemies):
+            if enemyY[i] > 500:
+                for j in range(num_of_enemies):
+                    enemyY[j] = 2000
+                game_over_text()
+                with open('file.txt', 'w') as file:
+                    file.write(str(high_score))
+                break
+
+            enemyY[i] += enemyY_change[i]
+            if enemyY[i] >= 600:
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+
+            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
+                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
+                collision_Sound.play()
+                collision_Sound.set_volume(0.7)
+                projectileY = 480
+                projectile_status = "ready"
+                score_value += 1
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
+
+            enemy(enemyX[i], enemyY[i], i)
+
+        if projectileY <= 0:
+            projectileY = 480
+            projectile_status = "ready"
+
+        if projectile_status == "fire":
+            fire_projectile(projectileX, projectileY)
+            projectileY -= projectileY_change
+
+        player(playerX, playerY)
+        show_score(textX, textY)
+        pygame.display.update()
+        clock.tick(60)
+
+
+# Level Five
+def level5():
+    global playerX, playerY, playerX_change
+    global projectileX, projectileY, projectile_status, score_value, gameover
+    global music_stopped
+    global projectileY_change
+
+    projectileY_change = 11
+
+    mixer.music.play(-1)
+
+    num_of_enemies = 5
+    for i in range(num_of_enemies):
+        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
+        enemyX.append(random.randint(0, 765))
+        enemyY.append(random.randint(0, 50))
+        enemyY_change.append(2)
+
+
+    running = True
+    while running:
+
+        # Background Color (rgb)
+        screen.fill((0, 0, 0))
+        screen.blit(background5, (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT and not gameover:
+                    playerX_change = -7
+                if event.key == pygame.K_RIGHT and not gameover:
+                    playerX_change = 7
+                if event.key == pygame.K_SPACE and not gameover:
+                    if projectile_status == "ready":
+                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
+                        projectile_Sound.play()
+                        projectile_Sound.set_volume(0.25)
+                        projectileX = playerX
+                        fire_projectile(projectileX, projectileY)
+                if event.key == pygame.K_m and not music_stopped:
+                    mixer.music.stop()
+                    music_stopped = True
+                if event.key == pygame.K_m and music_stopped:
+                    mixer.music.play()
+                    music_stopped = False
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    playerX_change = 0
+                if event.key == pygame.K_e and gameover:
+                    projectile_status = "ready"
+                    score_value = 0
+                    gameover = False
+                    mixer.music.play(-1)
+                    playerX = 370
+                    playerY = 480
+                    for i in range(num_of_enemies):
+                        enemyX[i] = random.randint(0, 765)
+                        enemyY[i] = random.randint(0, 50)
+
+        playerX += playerX_change
+
+        if playerX <= 0:
+            playerX = 0
+        elif playerX >= 736:
+            playerX = 736
+
+        for i in range(num_of_enemies):
+            if enemyY[i] > 500:
+                for j in range(num_of_enemies):
+                    enemyY[j] = 2000
+                game_over_text()
+                with open('file.txt', 'w') as file:
+                    file.write(str(high_score))
+                break
+
+            enemyY[i] += enemyY_change[i]
+            if enemyY[i] >= 600:
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+
+            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
+                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
+                collision_Sound.play()
+                collision_Sound.set_volume(0.7)
+                projectileY = 480
+                projectile_status = "ready"
+                score_value += 1
+                enemyX[i] = random.randint(0, 765)
+                enemyY[i] = random.randint(0, 50)
+                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
+
+            enemy(enemyX[i], enemyY[i], i)
+
+        if projectileY <= 0:
+            projectileY = 480
+            projectile_status = "ready"
+
+        if projectile_status == "fire":
+            fire_projectile(projectileX, projectileY)
+            projectileY -= projectileY_change
+
+        player(playerX, playerY)
+        show_score(textX, textY)
+        pygame.display.update()
+        clock.tick(60)
+
+
+# Level Six
+def level6():
+    global playerX, playerY, playerX_change
+    global projectileX, projectileY, projectile_status, score_value, gameover
+    global music_stopped
+    global projectileY_change
+
+    projectileY_change = 12
+
+    mixer.music.play(-1)
+
+    num_of_enemies = 6
+    for i in range(num_of_enemies):
+        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
+        enemyX.append(random.randint(0, 765))
+        enemyY.append(random.randint(0, 50))
+        enemyY_change.append(2)
+
+
+    running = True
+    while running:
+
+        # Background Color (rgb)
+        screen.fill((0, 0, 0))
+        screen.blit(background6, (0, 0))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
