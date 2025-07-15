@@ -67,7 +67,7 @@ try:
 except(ValueError, FileNotFoundError):
     high_score = 0
 
-font = pygame.font.Font('freesansbold.ttf', 30)
+font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 32)
 score_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 42)
 
 textX = 10
@@ -112,7 +112,7 @@ def main_menu():
         screen.blit(menu_bg, (0, 0))
 
         # Title
-        title_text = menu_font.render("ASTEROID", True, (255, 255, 255))
+        title_text = menu_font.render("ASTEROID", True, (100, 150, 255))
         subtitle_text = menu_font_2.render("ATTACK", True, (200, 200, 255))
         screen.blit(title_text, title_text.get_rect(center=(400, 130)))
         screen.blit(subtitle_text, subtitle_text.get_rect(center=(400, 180)))
@@ -168,7 +168,7 @@ def instructions_screen():
         screen.blit(instructions_bg, (0, 0))
 
         # Text
-        instructions_title = instructions_font.render("HOW TO PLAY", True, (255, 255, 255))
+        instructions_title = instructions_font.render("HOW TO PLAY", True, (100, 150, 255))
         screen.blit(instructions_title, instructions_title.get_rect(center = (400, 90)))
 
         instructions_text = [
@@ -181,7 +181,7 @@ def instructions_screen():
         ]
 
         for i, line in enumerate(instructions_text):
-            text = instructions_font2.render(line, True, (255, 255, 255))
+            text = instructions_font2.render(line, True, (200, 220, 255))
             screen.blit(text, text.get_rect(center = (400, 200 + i * 38)))
 
         # Mouse Position
@@ -224,7 +224,7 @@ def levels():
         screen.blit(levels_bg, (0, 0))
 
         # Title
-        levels_title_text = level_font.render("LEVELS", True, (255, 255, 255))
+        levels_title_text = level_font.render("LEVELS", True, (100, 150, 255))
         screen.blit(levels_title_text, levels_title_text.get_rect(center = (400, 100)))
 
         # Mouse Position
@@ -449,21 +449,6 @@ def level1():
         elif playerX >= 736:
             playerX = 736
 
-        if lives == 2:
-            lives_shown = [False, True, True]
-        if lives == 1:
-            lives_shown = [False, False, True]
-        if lives == 0:
-            lives_shown = [False, False, False]
-
-        if lives_shown[0]:
-            screen.blit(livesImg, (680, 12))
-        if lives_shown[1]:
-            screen.blit(livesImg, (720, 12))
-        if lives_shown[2] and lives >= 1:
-            screen.blit(livesImg, (760, 12))
-
-        
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
                 if lives == 1:
@@ -479,6 +464,21 @@ def level1():
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+
+            if lives == 2:
+                lives_shown = [False, True, True]
+            if lives == 1:
+                lives_shown = [False, False, True]
+            if lives == 0:
+                lives_shown = [False, False, False]
+
+            if lives_shown[0]:
+                screen.blit(livesImg, (680, 12))
+            if lives_shown[1]:
+                screen.blit(livesImg, (720, 12))
+            if lives_shown[2] and lives >= 1:
+                screen.blit(livesImg, (760, 12))
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -583,20 +583,6 @@ def level2():
         elif playerX >= 736:
             playerX = 736
 
-        if lives == 2:
-            lives_shown = [False, True, True]
-        if lives == 1:
-            lives_shown = [False, False, True]
-        if lives == 0:
-            lives_shown = [False, False, False]
-
-        if lives_shown[0]:
-            screen.blit(livesImg, (680, 12))
-        if lives_shown[1]:
-            screen.blit(livesImg, (720, 12))
-        if lives_shown[2] and lives >= 1:
-            screen.blit(livesImg, (760, 12))
-
         
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
@@ -613,6 +599,22 @@ def level2():
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+
+            if lives == 2:
+                lives_shown = [False, True, True]
+            if lives == 1:
+                lives_shown = [False, False, True]
+            if lives == 0:
+                lives_shown = [False, False, False]
+
+            if lives_shown[0]:
+                screen.blit(livesImg, (680, 12))
+            if lives_shown[1]:
+                screen.blit(livesImg, (720, 12))
+            if lives_shown[2] and lives >= 1:
+                screen.blit(livesImg, (760, 12))
+
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -716,20 +718,6 @@ def level3():
         elif playerX >= 736:
             playerX = 736
 
-        if lives == 2:
-            lives_shown = [False, True, True]
-        if lives == 1:
-            lives_shown = [False, False, True]
-        if lives == 0:
-            lives_shown = [False, False, False]
-
-        if lives_shown[0]:
-            screen.blit(livesImg, (680, 12))
-        if lives_shown[1]:
-            screen.blit(livesImg, (720, 12))
-        if lives_shown[2] and lives >= 1:
-            screen.blit(livesImg, (760, 12))
-
         
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
@@ -746,6 +734,21 @@ def level3():
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+
+            if lives == 2:
+                lives_shown = [False, True, True]
+            if lives == 1:
+                lives_shown = [False, False, True]
+            if lives == 0:
+                lives_shown = [False, False, False]
+
+            if lives_shown[0]:
+                screen.blit(livesImg, (680, 12))
+            if lives_shown[1]:
+                screen.blit(livesImg, (720, 12))
+            if lives_shown[2] and lives >= 1:
+                screen.blit(livesImg, (760, 12))
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -849,20 +852,6 @@ def level4():
         elif playerX >= 736:
             playerX = 736
 
-        if lives == 2:
-            lives_shown = [False, True, True]
-        if lives == 1:
-            lives_shown = [False, False, True]
-        if lives == 0:
-            lives_shown = [False, False, False]
-
-        if lives_shown[0]:
-            screen.blit(livesImg, (680, 12))
-        if lives_shown[1]:
-            screen.blit(livesImg, (720, 12))
-        if lives_shown[2] and lives >= 1:
-            screen.blit(livesImg, (760, 12))
-
         
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
@@ -879,6 +868,21 @@ def level4():
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+
+            if lives == 2:
+                lives_shown = [False, True, True]
+            if lives == 1:
+                lives_shown = [False, False, True]
+            if lives == 0:
+                lives_shown = [False, False, False]
+
+            if lives_shown[0]:
+                screen.blit(livesImg, (680, 12))
+            if lives_shown[1]:
+                screen.blit(livesImg, (720, 12))
+            if lives_shown[2] and lives >= 1:
+                screen.blit(livesImg, (760, 12))
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -982,20 +986,6 @@ def level5():
         elif playerX >= 736:
             playerX = 736
 
-        if lives == 2:
-            lives_shown = [False, True, True]
-        if lives == 1:
-            lives_shown = [False, False, True]
-        if lives == 0:
-            lives_shown = [False, False, False]
-
-        if lives_shown[0]:
-            screen.blit(livesImg, (680, 12))
-        if lives_shown[1]:
-            screen.blit(livesImg, (720, 12))
-        if lives_shown[2] and lives >= 1:
-            screen.blit(livesImg, (760, 12))
-
         
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
@@ -1012,6 +1002,21 @@ def level5():
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+
+            if lives == 2:
+                lives_shown = [False, True, True]
+            if lives == 1:
+                lives_shown = [False, False, True]
+            if lives == 0:
+                lives_shown = [False, False, False]
+
+            if lives_shown[0]:
+                screen.blit(livesImg, (680, 12))
+            if lives_shown[1]:
+                screen.blit(livesImg, (720, 12))
+            if lives_shown[2] and lives >= 1:
+                screen.blit(livesImg, (760, 12))
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
@@ -1115,20 +1120,6 @@ def level6():
         elif playerX >= 736:
             playerX = 736
 
-        if lives == 2:
-            lives_shown = [False, True, True]
-        if lives == 1:
-            lives_shown = [False, False, True]
-        if lives == 0:
-            lives_shown = [False, False, False]
-
-        if lives_shown[0]:
-            screen.blit(livesImg, (680, 12))
-        if lives_shown[1]:
-            screen.blit(livesImg, (720, 12))
-        if lives_shown[2] and lives >= 1:
-            screen.blit(livesImg, (760, 12))
-
         
         for i in range(num_of_enemies):
             if enemyY[i] > 500:
@@ -1145,6 +1136,21 @@ def level6():
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+
+            if lives == 2:
+                lives_shown = [False, True, True]
+            if lives == 1:
+                lives_shown = [False, False, True]
+            if lives == 0:
+                lives_shown = [False, False, False]
+
+            if lives_shown[0]:
+                screen.blit(livesImg, (680, 12))
+            if lives_shown[1]:
+                screen.blit(livesImg, (720, 12))
+            if lives_shown[2] and lives >= 1:
+                screen.blit(livesImg, (760, 12))
 
             if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
                 collision_Sound = mixer.Sound('./assets/music/explosion.wav')
