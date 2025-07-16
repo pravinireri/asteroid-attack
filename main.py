@@ -1,6 +1,4 @@
-import pygame
-import random
-import math
+import pygame, random, math
 from pygame import mixer
 
 pygame.init()
@@ -370,6 +368,9 @@ def isCollision(enemyX, enemyY, projectileX, projectileY):
         return True
     else:
         return False
+    
+
+screen_shake = 0
 
 
 # Level One
@@ -380,6 +381,9 @@ def level1():
     global num_of_enemies, asteroid_images
     global projectileY_change
     global lives, livesImg, lives_shown
+    global screen_shake
+
+    render_offset = [0, 0]
 
     music_stopped = False
 
@@ -399,7 +403,7 @@ def level1():
 
         # Background Color (rgb)
         screen.fill((0, 0, 0))
-        screen.blit(background1, (0, 0))
+        screen.blit(background1, (render_offset[0], render_offset[1]))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -461,9 +465,19 @@ def level1():
 
             enemyY[i] += enemyY_change[i]
             if enemyY[i] >= 520:
+                screen_shake = 30
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+            
+            if screen_shake > 0:
+                render_offset[0] = random.randint(0, 8) - 4
+                render_offset[1] = random.randint(0, 8) - 4
+                screen_shake -= 1
+            else:
+                render_offset = [0, 0]
+
 
 
             if lives == 2:
@@ -491,17 +505,17 @@ def level1():
                 enemyY[i] = random.randint(0, 50)
                 enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
 
-            enemy(enemyX[i], enemyY[i], i)
+            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
 
         if projectileY <= 0:
             projectileY = 480
             projectile_status = "ready"
 
         if projectile_status == "fire":
-            fire_projectile(projectileX, projectileY)
+            fire_projectile(projectileX + render_offset[0], projectileY + render_offset[1])
             projectileY -= projectileY_change
 
-        player(playerX, playerY)
+        player(playerX + render_offset[0], playerY + render_offset[1])
         show_score(textX, textY)
         pygame.display.update()
         clock.tick(60)
