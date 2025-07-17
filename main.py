@@ -100,6 +100,82 @@ livesImg = pygame.image.load('./assets/images/heart.png')
 lives = 3
 lives_shown = [True, True, True]
 
+# Pause Menu
+pause_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 64)
+pause_font2 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 32)
+pause_font3 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 24)
+
+overlay = pygame.Surface((800, 600), pygame.SRCALPHA)
+overlay.fill((0, 0, 0, 180))
+paused = False
+
+pause_click = False
+
+
+def pause_menu():
+    global paused, music_stopped, pause_click
+
+    game_frame = screen.copy()
+
+    waiting = True
+    while waiting:
+        screen.blit(game_frame, (0, 0))
+
+        overlay.fill((0, 0, 0, 180))
+        screen.blit(overlay, (0, 0))
+
+        # Title
+        pause_text = pause_font.render("GAME PAUSED", True, (100, 150, 255))
+        screen.blit(pause_text, pause_text.get_rect(center = (400, 150)))
+
+        # Instructions
+        instructions = pause_font3.render("Press ESC to resume", True, (200, 220, 255))
+        screen.blit(instructions, instructions.get_rect(center = (400, 230)))
+
+        # Mouse
+        mx, my = pygame.mouse.get_pos()
+
+        # Resume Button
+        resume_button = pygame.Rect(300, 300, 200, 50)
+        if resume_button.collidepoint((mx, my)):
+            pygame.draw.rect(screen, (45, 55, 85), resume_button, border_radius = 10)
+            if pause_click:
+                waiting = False
+        else:
+            pygame.draw.rect(screen, (60, 70, 100), resume_button, border_radius = 10)
+
+        resume_text = pause_font2.render("RESUME", True, (255, 255, 255))
+        screen.blit(resume_text, resume_text.get_rect(center = (resume_button.center)))
+
+        # Main Menu Button
+        menu_button = pygame.Rect(300, 370, 200, 50)
+        if menu_button.collidepoint((mx, my)):
+            pygame.draw.rect(screen, (45, 55, 85), menu_button, border_radius = 10)
+            if pause_click:
+                return "menu"
+        else:
+            pygame.draw.rect(screen, (60, 70, 100), menu_button, border_radius = 10)
+
+        menu_text = pause_font2.render("MAIN MENU", True, (255, 255, 255))
+        screen.blit(menu_text, menu_text.get_rect(center = (menu_button.center)))
+
+
+        pause_click = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    quit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    pause_click = True
+
+        pygame.display.update()
+        clock.tick(60)
+
+    return "resume"
+
 
 def main_menu():
     global click
@@ -428,7 +504,9 @@ def level1():
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    result = pause_menu()
+                    if result == "menu":
+                        running = False
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -529,6 +607,9 @@ def level2():
     global music_stopped
     global projectileY_change
     global lives, livesImg, lives_shown
+    global screen_shake
+
+    render_offset = [0, 0]
 
     projectileY_change = 8
 
@@ -547,7 +628,7 @@ def level2():
 
         # Background Color (rgb)
         screen.fill((0, 0, 0))
-        screen.blit(background2, (0, 0))
+        screen.blit(background2, (render_offset[0], render_offset[1]))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -572,7 +653,9 @@ def level2():
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    result = pause_menu()
+                    if result == "menu":
+                        running = False
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -610,9 +693,18 @@ def level2():
 
             enemyY[i] += enemyY_change[i]
             if enemyY[i] >= 520:
+                screen_shake = 30
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+            
+            if screen_shake > 0:
+                render_offset[0] = random.randint(0, 8) - 4
+                render_offset[1] = random.randint(0, 8) - 4
+                screen_shake -= 1
+            else:
+                render_offset = [0, 0]
 
 
             if lives == 2:
@@ -641,7 +733,7 @@ def level2():
                 enemyY[i] = random.randint(0, 50)
                 enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
 
-            enemy(enemyX[i], enemyY[i], i)
+            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
 
         if projectileY <= 0:
             projectileY = 480
@@ -651,7 +743,7 @@ def level2():
             fire_projectile(projectileX, projectileY)
             projectileY -= projectileY_change
 
-        player(playerX, playerY)
+        player(playerX + render_offset[0], playerY + render_offset[1])
         show_score(textX, textY)
         pygame.display.update()
         clock.tick(60)
@@ -664,6 +756,9 @@ def level3():
     global music_stopped
     global projectileY_change
     global lives, livesImg, lives_shown
+    global screen_shake
+
+    render_offset = [0, 0]
 
     projectileY_change = 9
 
@@ -682,7 +777,7 @@ def level3():
 
         # Background Color (rgb)
         screen.fill((0, 0, 0))
-        screen.blit(background3, (0, 0))
+        screen.blit(background3, (render_offset[0], render_offset[1]))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -707,7 +802,9 @@ def level3():
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    result = pause_menu()
+                    if result == "menu":
+                        running = False
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -745,9 +842,18 @@ def level3():
 
             enemyY[i] += enemyY_change[i]
             if enemyY[i] >= 520:
+                screen_shake = 30
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+            
+            if screen_shake > 0:
+                render_offset[0] = random.randint(0, 8) - 4
+                render_offset[1] = random.randint(0, 8) - 4
+                screen_shake -= 1
+            else:
+                render_offset = [0, 0]
 
 
             if lives == 2:
@@ -775,7 +881,7 @@ def level3():
                 enemyY[i] = random.randint(0, 50)
                 enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
 
-            enemy(enemyX[i], enemyY[i], i)
+            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
 
         if projectileY <= 0:
             projectileY = 480
@@ -785,7 +891,7 @@ def level3():
             fire_projectile(projectileX, projectileY)
             projectileY -= projectileY_change
 
-        player(playerX, playerY)
+        player(playerX + render_offset[0], playerY + render_offset[1])
         show_score(textX, textY)
         pygame.display.update()
         clock.tick(60)
@@ -798,6 +904,9 @@ def level4():
     global music_stopped
     global projectileY_change
     global lives, livesImg, lives_shown
+    global screen_shake
+
+    render_offset = [0, 0]
 
     projectileY_change = 10
 
@@ -816,7 +925,7 @@ def level4():
 
         # Background Color (rgb)
         screen.fill((0, 0, 0))
-        screen.blit(background4, (0, 0))
+        screen.blit(background4, (render_offset[0], render_offset[1]))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -841,7 +950,9 @@ def level4():
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    result = pause_menu()
+                    if result == "menu":
+                        running = False
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -879,9 +990,18 @@ def level4():
 
             enemyY[i] += enemyY_change[i]
             if enemyY[i] >= 520:
+                screen_shake = 30
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+            
+            if screen_shake > 0:
+                render_offset[0] = random.randint(0, 8) - 4
+                render_offset[1] = random.randint(0, 8) - 4
+                screen_shake -= 1
+            else:
+                render_offset = [0, 0]
 
 
             if lives == 2:
@@ -909,7 +1029,7 @@ def level4():
                 enemyY[i] = random.randint(0, 50)
                 enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
 
-            enemy(enemyX[i], enemyY[i], i)
+            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
 
         if projectileY <= 0:
             projectileY = 480
@@ -919,7 +1039,7 @@ def level4():
             fire_projectile(projectileX, projectileY)
             projectileY -= projectileY_change
 
-        player(playerX, playerY)
+        player(playerX + render_offset[0], playerY + render_offset[1])
         show_score(textX, textY)
         pygame.display.update()
         clock.tick(60)
@@ -932,6 +1052,9 @@ def level5():
     global music_stopped
     global projectileY_change
     global lives, livesImg, lives_shown
+    global screen_shake
+
+    render_offset = [0, 0]
 
     projectileY_change = 11
 
@@ -950,7 +1073,7 @@ def level5():
 
         # Background Color (rgb)
         screen.fill((0, 0, 0))
-        screen.blit(background5, (0, 0))
+        screen.blit(background5, (render_offset[0], render_offset[1]))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -975,7 +1098,9 @@ def level5():
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    result = pause_menu()
+                    if result == "menu":
+                        running = False
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -1013,9 +1138,18 @@ def level5():
 
             enemyY[i] += enemyY_change[i]
             if enemyY[i] >= 520:
+                screen_shake = 30
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+            
+            if screen_shake > 0:
+                render_offset[0] = random.randint(0, 8) - 4
+                render_offset[1] = random.randint(0, 8) - 4
+                screen_shake -= 1
+            else:
+                render_offset = [0, 0]
 
 
             if lives == 2:
@@ -1043,7 +1177,7 @@ def level5():
                 enemyY[i] = random.randint(0, 50)
                 enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
 
-            enemy(enemyX[i], enemyY[i], i)
+            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
 
         if projectileY <= 0:
             projectileY = 480
@@ -1053,7 +1187,7 @@ def level5():
             fire_projectile(projectileX, projectileY)
             projectileY -= projectileY_change
 
-        player(playerX, playerY)
+        player(playerX + render_offset[0], playerY + render_offset[1])
         show_score(textX, textY)
         pygame.display.update()
         clock.tick(60)
@@ -1066,6 +1200,9 @@ def level6():
     global music_stopped
     global projectileY_change
     global lives, livesImg, lives_shown
+    global screen_shake
+
+    render_offset = [0, 0]
 
     projectileY_change = 12
 
@@ -1084,7 +1221,7 @@ def level6():
 
         # Background Color (rgb)
         screen.fill((0, 0, 0))
-        screen.blit(background6, (0, 0))
+        screen.blit(background6, (render_offset[0], render_offset[1]))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1109,7 +1246,9 @@ def level6():
                     mixer.music.play()
                     music_stopped = False
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    result = pause_menu()
+                    if result == "menu":
+                        running = False
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
@@ -1147,9 +1286,18 @@ def level6():
 
             enemyY[i] += enemyY_change[i]
             if enemyY[i] >= 520:
+                screen_shake = 30
                 enemyX[i] = random.randint(0, 765)
                 enemyY[i] = random.randint(0, 50)
                 lives -= 1
+
+            
+            if screen_shake > 0:
+                render_offset[0] = random.randint(0, 8) - 4
+                render_offset[1] = random.randint(0, 8) - 4
+                screen_shake -= 1
+            else:
+                render_offset = [0, 0]
 
 
             if lives == 2:
@@ -1177,7 +1325,7 @@ def level6():
                 enemyY[i] = random.randint(0, 50)
                 enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
 
-            enemy(enemyX[i], enemyY[i], i)
+            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
 
         if projectileY <= 0:
             projectileY = 480
@@ -1187,7 +1335,7 @@ def level6():
             fire_projectile(projectileX, projectileY)
             projectileY -= projectileY_change
 
-        player(playerX, playerY)
+        player(playerX + render_offset[0], playerY + render_offset[1])
         show_score(textX, textY)
         pygame.display.update()
         clock.tick(60)
