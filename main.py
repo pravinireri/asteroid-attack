@@ -129,7 +129,7 @@ def pause_menu():
         screen.blit(pause_text, pause_text.get_rect(center = (400, 150)))
 
         # Instructions
-        instructions = pause_font3.render("Press ESC to resume", True, (200, 220, 255))
+        instructions = pause_font3.render("Press ESC to quit", True, (200, 220, 255))
         screen.blit(instructions, instructions.get_rect(center = (400, 230)))
 
         # Mouse
@@ -385,7 +385,7 @@ def levels():
                 quit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    main_menu()
+                    instructions_screen()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     level_click = True
