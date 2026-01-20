@@ -35,5 +35,3 @@ A retro-style 2D space shooter game built with **Pygame**, where the player pilo
 - UI screens: clickable menu, pause screen, game over with restart
 
 - Controls: arrows move, space shoots, ESC pauses, M mutes, E restarts
-
-- Smooth 60 FPS game loop, easy to run and debug in VS Code
