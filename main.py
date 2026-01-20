@@ -509,6 +509,10 @@ class Game:
                 
                 if event.key == pygame.K_e and self.state_manager.current_state == GameState.GAME_OVER:
                     self.state_manager.transition(GameState.MENU)
+
+                if event.key == pygame.K_ESCAPE and self.state_manager.current_state == GameState.GAME_OVER:
+                    self._save_high_score()
+                    self.state_manager.transition(GameState.MENU)    
             
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
