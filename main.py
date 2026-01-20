@@ -1,1342 +1,612 @@
-import pygame, random, math
+﻿import pygame
+import random
+import math
+from enum import Enum
 from pygame import mixer
-
-pygame.init()
-
-# Screen Size (x, y)
-screen = pygame.display.set_mode((800, 600))
-
-# Frame Rate
-clock = pygame.time.Clock()
-
-# Background
-background1 = pygame.image.load('./assets/images/background1.png')
-background2 = pygame.image.load('./assets/images/background2.png')
-background3 = pygame.image.load('./assets/images/background3.png')
-background4 = pygame.image.load('./assets/images/background4.png')
-background5 = pygame.image.load('./assets/images/background5.png')
-background6 = pygame.image.load('./assets/images/background6.png')
-
-# Background Sound
-pygame.mixer.init()
-mixer.music.load('./assets/music/background.wav')
-mixer.music.set_volume(0.5)
-music_stopped = False
-
-# Title & Icon
-pygame.display.set_caption('Asteroid Attack')
-icon = pygame.image.load('./assets/images/asteroid1.png')
-pygame.display.set_icon(icon)
-
-# Player
-playerImg = pygame.image.load('./assets/images/spaceship3.png')
-playerX = 370
-playerY = 480
-playerX_change = 0
-
-# Enemy
-enemyImg = []
-enemyX = []
-enemyY = []
-enemyY_change = []
-num_of_enemies = 2
-
-asteroid_images = ['./assets/images/asteroid1.png', './assets/images/asteroid2.png', './assets/images/asteroid3.png']
-for i in range(num_of_enemies):
-    enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
-    enemyX.append(random.randint(0, 765))
-    enemyY.append(random.randint(0, 200))
-    enemyY_change.append(2)
-
-# Projectile
-projectileImg = pygame.image.load('./assets/images/projectile.png')
-projectileX = 370
-projectileY = 480
-projectileY_change = 6
-projectile_status = "ready"
-
-# Score
-score_value = 0
-
-try:
-    with open('file.txt', 'r') as file:
-        content = file.read()
-    high_score = int(content)
-except(ValueError, FileNotFoundError):
-    high_score = 0
-
-font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 32)
-score_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 42)
-
-textX = 10
-textY = 10
-
-# Game Over
-over_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 64)
-gameover = False
-
-# Play Again
-again_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 24)
-
-# Main Menu
-menu_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 50)
-menu_font_2 = pygame.font.Font('./assets/fonts/Poppins-MediumItalic.ttf', 42)
-menu_font_3 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 36)
-click = False
-
-# Instructions
-instructions_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 50)
-instructions_font2 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 36)
-instructions_font3 = pygame.font.Font('./assets/fonts/Anton-Regular.ttf', 40)
-new_click = False
-
-# Levels
-level_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 50)
-levels_font = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 36)
-level_click = False
-
-# Lives
-livesImg = pygame.image.load('./assets/images/heart.png')
-lives = 3
-lives_shown = [True, True, True]
-
-# Pause Menu
-pause_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 64)
-pause_font2 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 32)
-pause_font3 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 24)
-
-overlay = pygame.Surface((800, 600), pygame.SRCALPHA)
-overlay.fill((0, 0, 0, 180))
-paused = False
-
-pause_click = False
+from dataclasses import dataclass
+from typing import List, Tuple, Sequence
 
 
-def pause_menu():
-    global paused, music_stopped, pause_click
+# ============================================================================
+# GAME STATE MANAGEMENT
+# ============================================================================
 
-    game_frame = screen.copy()
+class GameState(Enum):
+    """Game state enum for state machine."""
+    MENU = "menu"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    GAME_OVER = "game_over"
 
-    waiting = True
-    while waiting:
-        screen.blit(game_frame, (0, 0))
 
-        overlay.fill((0, 0, 0, 180))
-        screen.blit(overlay, (0, 0))
+class GameStateManager:
+    """Manages game state transitions and active state."""
+    
+    def __init__(self):
+        self.current_state = GameState.MENU
+        self.previous_state = None
+    
+    def transition(self, new_state: GameState):
+        """Transition to a new game state."""
+        self.previous_state = self.current_state
+        self.current_state = new_state
+    
+    def is_playing(self) -> bool:
+        """Check if game is actively playing."""
+        return self.current_state == GameState.PLAYING
 
-        # Title
-        pause_text = pause_font.render("GAME PAUSED", True, (100, 150, 255))
-        screen.blit(pause_text, pause_text.get_rect(center = (400, 150)))
 
-        # Instructions
-        instructions = pause_font3.render("Press ESC to quit", True, (200, 220, 255))
-        screen.blit(instructions, instructions.get_rect(center = (400, 230)))
+# ============================================================================
+# DIFFICULTY SCALING SYSTEM
+# ============================================================================
 
-        # Mouse
-        mx, my = pygame.mouse.get_pos()
+class DifficultyScaler:
+    """
+    Manages difficulty progression over time.
+    
+    Formulas:
+    - Spawn rate: base_rate + (elapsed_seconds * scale_factor)
+    - Speed: base_speed * (1 + score * speed_scale_factor)
+    """
+    
+    def __init__(self):
+        self.base_spawn_rate = 1.0  # asteroids per second
+        self.spawn_scale_factor = 0.05  # increase by 0.05 per second
+        self.base_speed = 2.0
+        self.speed_scale_factor = 0.01  # 1% speed increase per score point
+        self.elapsed_time = 0
+    
+    def update(self, dt: float):
+        """Update elapsed time."""
+        self.elapsed_time += dt
+    
+    def get_spawn_rate(self) -> float:
+        """Get current spawn rate based on elapsed time."""
+        return min(
+            self.base_spawn_rate + (self.elapsed_time * self.spawn_scale_factor),
+            5.0  # cap at 5 asteroids per second
+        )
+    
+    def get_speed(self, score: int) -> float:
+        """Get current asteroid speed based on score."""
+        return max(
+            self.base_speed * (1 + score * self.speed_scale_factor),
+            2.0
+        )
+    
+    def reset(self):
+        """Reset difficulty for new game."""
+        self.elapsed_time = 0
 
-        # Resume Button
-        resume_button = pygame.Rect(300, 300, 200, 50)
-        if resume_button.collidepoint((mx, my)):
-            pygame.draw.rect(screen, (45, 55, 85), resume_button, border_radius = 10)
-            if pause_click:
-                waiting = False
+
+# ============================================================================
+# GAME ENTITIES
+# ============================================================================
+
+@dataclass
+class Vector2:
+    """Simple 2D vector."""
+    x: float
+    y: float
+
+
+class Entity:
+    """Base class for all game entities."""
+    
+    def __init__(self, x: float, y: float, image: pygame.Surface):
+        self.pos = Vector2(x, y)
+        self.image = image
+        self.width = image.get_width()
+        self.height = image.get_height()
+    
+    def draw(self, surface: pygame.Surface, offset: Tuple[int, int] = (0, 0)):
+        """Draw entity on surface."""
+        surface.blit(self.image, (self.pos.x + offset[0], self.pos.y + offset[1]))
+    
+    def get_rect(self):
+        """Get rectangle for collision detection."""
+        return pygame.Rect(self.pos.x, self.pos.y, self.width, self.height)
+
+
+class Player(Entity):
+    """Player spaceship entity."""
+    
+    SPEED = 7
+    BOUNDARY_LEFT = 0
+    BOUNDARY_RIGHT = 736
+    
+    def __init__(self, x: float, y: float, image: pygame.Surface):
+        super().__init__(x, y, image)
+        self.velocity = 0
+    
+    def handle_input(self, keys: Sequence[bool]):
+        """Handle player input."""
+        if keys[pygame.K_LEFT]:
+            self.velocity = -self.SPEED
+        elif keys[pygame.K_RIGHT]:
+            self.velocity = self.SPEED
         else:
-            pygame.draw.rect(screen, (60, 70, 100), resume_button, border_radius = 10)
-
-        resume_text = pause_font2.render("RESUME", True, (255, 255, 255))
-        screen.blit(resume_text, resume_text.get_rect(center = (resume_button.center)))
-
-        # Main Menu Button
-        menu_button = pygame.Rect(300, 370, 200, 50)
-        if menu_button.collidepoint((mx, my)):
-            pygame.draw.rect(screen, (45, 55, 85), menu_button, border_radius = 10)
-            if pause_click:
-                return "menu"
-        else:
-            pygame.draw.rect(screen, (60, 70, 100), menu_button, border_radius = 10)
-
-        menu_text = pause_font2.render("MAIN MENU", True, (255, 255, 255))
-        screen.blit(menu_text, menu_text.get_rect(center = (menu_button.center)))
+            self.velocity = 0
+    
+    def update(self):
+        """Update player position."""
+        self.pos.x += self.velocity
+        
+        # Boundary checking
+        if self.pos.x <= self.BOUNDARY_LEFT:
+            self.pos.x = self.BOUNDARY_LEFT
+        elif self.pos.x >= self.BOUNDARY_RIGHT:
+            self.pos.x = self.BOUNDARY_RIGHT
 
 
-        pause_click = False
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    quit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    pause_click = True
-
-        pygame.display.update()
-        clock.tick(60)
-
-    return "resume"
-
-
-def main_menu():
-    global click
-    click = False
-    menu_bg = pygame.image.load('./assets/images/menu_bg.png')
-
-    while True:
-        screen.blit(menu_bg, (0, 0))
-
-        # Title
-        title_text = menu_font.render("ASTEROID", True, (100, 150, 255))
-        subtitle_text = menu_font_2.render("ATTACK", True, (200, 200, 255))
-        screen.blit(title_text, title_text.get_rect(center=(400, 130)))
-        screen.blit(subtitle_text, subtitle_text.get_rect(center=(400, 180)))
-
-        # Mouse position
-        mx, my = pygame.mouse.get_pos()
-
-        # Buttons
-        button_play = pygame.Rect(300, 300, 200, 50)
-        button_quit = pygame.Rect(300, 380, 200, 50)
-
-        if button_play.collidepoint((mx, my)):
-            pygame.draw.rect(screen, (45, 55, 85), button_play, border_radius=10)
-            if click:
-                instructions_screen()
-                click = False
-        else:
-            pygame.draw.rect(screen, (60, 70, 100), button_play, border_radius=10)
-
-        if button_quit.collidepoint((mx, my)):
-            pygame.draw.rect(screen, (45, 55, 85), button_quit, border_radius=10)
-            if click:
-                pygame.quit()
-                quit()
-        else:
-            pygame.draw.rect(screen, (60, 70, 100), button_quit, border_radius=10)
-
-        play_text = menu_font_3.render("PLAY", True, (255, 255, 255))
-        quit_text = menu_font_3.render("QUIT", True, (255, 255, 255))
-        screen.blit(play_text, play_text.get_rect(center=button_play.center))
-        screen.blit(quit_text, quit_text.get_rect(center=button_quit.center))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    quit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    click = True
-
-        pygame.display.update()
-        clock.tick(60)
+class Bullet(Entity):
+    """Projectile/bullet entity."""
+    
+    SPEED = 7
+    
+    def __init__(self, x: float, y: float, image: pygame.Surface):
+        super().__init__(x, y, image)
+        self.active = False
+    
+    def fire(self, x: float, y: float):
+        """Fire bullet from given position."""
+        self.pos.x = x
+        self.pos.y = y
+        self.active = True
+    
+    def update(self):
+        """Update bullet position."""
+        if self.active:
+            self.pos.y -= self.SPEED
+            if self.pos.y < 0:
+                self.active = False
 
 
-def instructions_screen():
-    global new_click
-    new_click = False
-    instructions_bg = pygame.image.load('./assets/images/menu_bg.png')
-    while True:
-        screen.blit(instructions_bg, (0, 0))
+class Asteroid(Entity):
+    """Asteroid enemy entity with AI behavior."""
+    
+    def __init__(self, x: float, y: float, image: pygame.Surface, speed: float = 2.0):
+        super().__init__(x, y, image)
+        self.speed = speed
+        self.drift_speed = random.uniform(0.5, 2.0)
+        self.drift_direction = random.choice([-1, 1])
+        self.homing_chance = 0.02  # 2% chance to target player
+        self.is_homing = False
+        self.lifetime = 0
+    
+    def set_difficulty_speed(self, speed: float):
+        """Update speed based on difficulty."""
+        self.speed = speed
+    
+    def update(self, player_pos: Vector2 = None):
+        """
+        Update asteroid position with smart behavior.
+        Drifts horizontally with variance, occasionally homes toward player.
+        """
+        self.lifetime += 1
+        
+        # Vertical movement (always falling)
+        self.pos.y += self.speed
+        
+        # Horizontal drift with variance
+        self.pos.x += self.drift_speed * self.drift_direction
+        
+        # Occasional homing behavior (light AI)
+        if player_pos and random.random() < self.homing_chance and not self.is_homing:
+            self.is_homing = True
+        
+        if self.is_homing and player_pos:
+            if self.pos.x < player_pos.x:
+                self.pos.x += 1
+            elif self.pos.x > player_pos.x:
+                self.pos.x -= 1
+            
+            if self.lifetime % 60 == 0:
+                self.is_homing = False
+        
+        # Boundary wrapping
+        if self.pos.x < 0:
+            self.pos.x = 800
+        elif self.pos.x > 800:
+            self.pos.x = 0
+        
+        # Occasional direction change
+        if random.random() < 0.01:
+            self.drift_direction *= -1
 
-        # Text
-        instructions_title = instructions_font.render("HOW TO PLAY", True, (100, 150, 255))
-        screen.blit(instructions_title, instructions_title.get_rect(center = (400, 90)))
 
-        instructions_text = [
-            "Move: Left and Right Arrow Keys",
-            "Shoot: Press SPACE",
-            "One shot at a time!",
-            "Mute/Unmute Music: Press M",
-            "Restart: Press E after Game Over",
-            "Quit: Press ESC anytime",
+class EnemyManager:
+    """Manages all asteroid enemies."""
+    
+    ASTEROID_IMAGES = [
+        './assets/images/asteroid1.png',
+        './assets/images/asteroid2.png',
+        './assets/images/asteroid3.png'
+    ]
+    
+    def __init__(self):
+        self.asteroids: List[Asteroid] = []
+    
+    def initialize_level(self, num_asteroids: int):
+        """Initialize asteroids for a level."""
+        self.asteroids.clear()
+        for _ in range(num_asteroids):
+            self._spawn_asteroid()
+    
+    def _spawn_asteroid(self, x: float = None, y: float = None, speed: float = 2.0):
+        """Spawn a single asteroid."""
+        if x is None:
+            x = random.randint(0, 765)
+        if y is None:
+            y = random.randint(0, 50)
+        
+        image = pygame.image.load(random.choice(self.ASTEROID_IMAGES))
+        asteroid = Asteroid(x, y, image, speed)
+        self.asteroids.append(asteroid)
+    
+    def update(self, difficulty_scaler: DifficultyScaler, player_pos: Vector2, score: int):
+        """Update all asteroids and handle spawning based on difficulty."""
+        speed = difficulty_scaler.get_speed(score)
+        for asteroid in self.asteroids:
+            asteroid.set_difficulty_speed(speed)
+            asteroid.update(player_pos)
+        
+        # Spawn new asteroids based on difficulty scaling
+        spawn_rate = difficulty_scaler.get_spawn_rate()
+        spawn_probability = spawn_rate / 60  # per-frame probability at 60 FPS
+        
+        if random.random() < spawn_probability and len(self.asteroids) < 12:
+            self._spawn_asteroid(speed=speed)
+    
+    def get_active_asteroids(self) -> List[Asteroid]:
+        """Get all active asteroids."""
+        return self.asteroids
+
+
+# ============================================================================
+# MAIN GAME CLASS
+# ============================================================================
+
+class Game:
+    """
+    Main game class - orchestrates all game systems.
+    
+    Responsibilities:
+    - Central game loop
+    - Coordinates all entities (player, asteroids, bullets)
+    - Handles collisions and score
+    - Manages game state and difficulty
+    """
+    
+    SCREEN_WIDTH = 800
+    SCREEN_HEIGHT = 600
+    FPS = 60
+    
+    def __init__(self):
+        pygame.init()
+        
+        self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+        pygame.display.set_caption('Asteroid Attack')
+        
+        self.clock = pygame.time.Clock()
+        self.running = True
+        
+        # Game systems
+        self.state_manager = GameStateManager()
+        self.difficulty_scaler = DifficultyScaler()
+        
+        # Game state
+        self.score = 0
+        self.high_score = self._load_high_score()
+        self.lives = 3
+        self.screen_shake = 0
+        self.click = False
+        
+        # Assets
+        self._load_assets()
+        
+        # Entities
+        self.player = Player(370, 480, self.player_img)
+        self.bullet = Bullet(370, 480, self.projectile_img)
+        self.enemy_manager = EnemyManager()
+        
+        # UI
+        self.font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 32)
+        self.score_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 42)
+        self.menu_font = pygame.font.Font('./assets/fonts/Poppins-BlackItalic.ttf', 50)
+        self.menu_font_2 = pygame.font.Font('./assets/fonts/Poppins-MediumItalic.ttf', 42)
+        self.menu_font_3 = pygame.font.Font('./assets/fonts/Poppins-Regular.ttf', 36)
+        self.over_font = pygame.font.Font('./assets/fonts/Rajdhani-Medium.ttf', 64)
+        
+        self.overlay = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA)
+        
+        # Music
+        self.music_playing = False
+        self._init_music()
+    
+    def _load_assets(self):
+        """Load all game assets."""
+        icon = pygame.image.load('./assets/images/asteroid1.png')
+        pygame.display.set_icon(icon)
+        
+        self.player_img = pygame.image.load('./assets/images/spaceship3.png')
+        self.projectile_img = pygame.image.load('./assets/images/projectile.png')
+        self.lives_img = pygame.image.load('./assets/images/heart.png')
+        
+        self.backgrounds = [
+            pygame.image.load('./assets/images/background1.png'),
+            pygame.image.load('./assets/images/background2.png'),
+            pygame.image.load('./assets/images/background3.png'),
+            pygame.image.load('./assets/images/background4.png'),
+            pygame.image.load('./assets/images/background5.png'),
+            pygame.image.load('./assets/images/background6.png'),
         ]
-
-        for i, line in enumerate(instructions_text):
-            text = instructions_font2.render(line, True, (200, 220, 255))
-            screen.blit(text, text.get_rect(center = (400, 200 + i * 38)))
-
-        # Mouse Position
-        mx, my = pygame.mouse.get_pos()
-
-        # Button
-        continue_button = pygame.Rect(300, 480, 200, 50)
-
-        if continue_button.collidepoint((mx, my)):
-            pygame.draw.rect(screen, (45, 55, 85), continue_button, border_radius = 10)
-            if new_click:
-                levels()
-                new_click = False
-        else:
-            pygame.draw.rect(screen, (60, 70, 100), continue_button, border_radius = 10)
-
-        continue_text = instructions_font2.render("Continue", True, (255, 255, 255))
-        screen.blit(continue_text, continue_text.get_rect(center = (continue_button.center)))
-
+        
+        self.menu_bg = pygame.image.load('./assets/images/menu_bg.png')
+    
+    def _init_music(self):
+        """Initialize background music."""
+        try:
+            pygame.mixer.init()
+            mixer.music.load('./assets/music/background.wav')
+            mixer.music.set_volume(0.5)
+        except Exception:
+            pass
+    
+    def _load_high_score(self) -> int:
+        """Load high score from file."""
+        try:
+            with open('file.txt', 'r') as f:
+                return int(f.read())
+        except (ValueError, FileNotFoundError):
+            return 0
+    
+    def _save_high_score(self):
+        """Save high score to file."""
+        if self.score > self.high_score:
+            self.high_score = self.score
+        try:
+            with open('file.txt', 'w') as f:
+                f.write(str(self.high_score))
+        except:
+            pass
+    
+    def _play_sound(self, sound_path: str, volume: float = 0.7):
+        """Play a sound effect."""
+        try:
+            sound = mixer.Sound(sound_path)
+            sound.set_volume(volume)
+            sound.play()
+        except:
+            pass
+    
+    def _check_collisions(self):
+        """Check bullet-asteroid collisions."""
+        if not self.bullet.active:
+            return
+        
+        bullet_rect = self.bullet.get_rect()
+        
+        for asteroid in self.enemy_manager.get_active_asteroids():
+            asteroid_rect = asteroid.get_rect()
+            if bullet_rect.colliderect(asteroid_rect):
+                self._play_sound('./assets/music/explosion.wav')
+                self.bullet.active = False
+                self.score += 1
+                
+                # Respawn asteroid
+                asteroid.pos.x = random.randint(0, 765)
+                asteroid.pos.y = random.randint(0, 50)
+    
+    def _check_asteroid_collisions(self):
+        """Check if asteroids hit bottom of screen."""
+        for asteroid in self.enemy_manager.get_active_asteroids():
+            if asteroid.pos.y > 500:
+                self.screen_shake = 30
+                asteroid.pos.x = random.randint(0, 765)
+                asteroid.pos.y = random.randint(0, 50)
+                self.lives -= 1
+                
+                if self.lives <= 0:
+                    self.state_manager.transition(GameState.GAME_OVER)
+    
+    def _update(self):
+        """Update game logic."""
+        keys = pygame.key.get_pressed()
+        self.player.handle_input(keys)
+        self.player.update()
+        
+        self.bullet.update()
+        
+        self.enemy_manager.update(
+            self.difficulty_scaler,
+            self.player.pos,
+            self.score
+        )
+        
+        # Handle shooting
+        if keys[pygame.K_SPACE] and not self.bullet.active:
+            self._play_sound('./assets/music/laser.wav', 0.25)
+            self.bullet.fire(self.player.pos.x, self.player.pos.y)
+        
+        self._check_collisions()
+        self._check_asteroid_collisions()
+        
+        self.difficulty_scaler.update(1.0 / self.FPS)
+        
+        # Screen shake
+        if self.screen_shake > 0:
+            self.screen_shake -= 1
+    
+    def _draw(self):
+        """Draw game elements."""
+        self.screen.fill((0, 0, 0))
+        
+        # Apply screen shake offset
+        offset = (0, 0)
+        if self.screen_shake > 0:
+            offset = (random.randint(-4, 4), random.randint(-4, 4))
+        
+        # Draw background
+        bg_index = min(self.score // 10, len(self.backgrounds) - 1)
+        self.screen.blit(self.backgrounds[bg_index], (offset[0], offset[1]))
+        
+        # Draw entities
+        self.player.draw(self.screen, offset)
+        
+        if self.bullet.active:
+            self.bullet.draw(self.screen, offset)
+        
+        for asteroid in self.enemy_manager.get_active_asteroids():
+            asteroid.draw(self.screen, offset)
+        
+        # Draw UI
+        score_text = self.font.render(f"Score: {self.score}", True, (255, 255, 255))
+        self.screen.blit(score_text, (10, 10))
+        
+        # Draw lives
+        lives_x = [680, 720, 760]
+        for i in range(self.lives):
+            self.screen.blit(self.lives_img, (lives_x[i], 12))
+        
+        pygame.display.update()
+    
+    def start_level(self, level: int):
+        """Start a specific level."""
+        self.score = 0
+        self.lives = 3
+        self.screen_shake = 0
+        self.difficulty_scaler.reset()
+        
+        num_asteroids = level
+        self.enemy_manager.initialize_level(num_asteroids)
+        
+        self.state_manager.transition(GameState.PLAYING)
+        mixer.music.play(-1)
+        self.music_playing = True
+    
+    def handle_events(self):
+        """Handle input events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                quit()
+                self.running = False
+                return
+            
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    main_menu()
+                    if self.state_manager.current_state == GameState.PLAYING:
+                        self.state_manager.transition(GameState.PAUSED)
+                    elif self.state_manager.current_state == GameState.PAUSED:
+                        self.state_manager.transition(GameState.PLAYING)
+                
+                if event.key == pygame.K_m:
+                    if self.music_playing:
+                        mixer.music.stop()
+                        self.music_playing = False
+                    else:
+                        mixer.music.play(-1)
+                        self.music_playing = True
+                
+                if event.key == pygame.K_e and self.state_manager.current_state == GameState.GAME_OVER:
+                    self.state_manager.transition(GameState.MENU)
+            
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    new_click = True
-
-        pygame.display.update()
-        clock.tick(60)
-
+                    self.click = True
     
-def levels():
-    global level_click
-    level_click = False
-    levels_bg = pygame.image.load('./assets/images/menu_bg.png')
-
-    while True:
-        screen.blit(levels_bg, (0, 0))
-
-        # Title
-        levels_title_text = level_font.render("LEVELS", True, (100, 150, 255))
-        screen.blit(levels_title_text, levels_title_text.get_rect(center = (400, 100)))
-
-        # Mouse Position
+    def run(self):
+        """Main game loop."""
+        while self.running:
+            self.handle_events()
+            
+            state = self.state_manager.current_state
+            
+            if state == GameState.MENU:
+                self._draw_menu()
+            elif state == GameState.PLAYING:
+                self._update()
+                self._draw()
+            elif state == GameState.PAUSED:
+                self._draw_pause_menu()
+            elif state == GameState.GAME_OVER:
+                self._draw_game_over()
+            
+            self.clock.tick(self.FPS)
+        
+        pygame.quit()
+    
+    def _draw_menu(self):
+        """Draw main menu."""
+        self.screen.blit(self.menu_bg, (0, 0))
+        
+        title = self.menu_font.render("ASTEROID", True, (100, 150, 255))
+        subtitle = self.menu_font_2.render("ATTACK", True, (200, 200, 255))
+        self.screen.blit(title, title.get_rect(center=(400, 130)))
+        self.screen.blit(subtitle, subtitle.get_rect(center=(400, 180)))
+        
         mx, my = pygame.mouse.get_pos()
-
-        # Buttons
-        level1_button = pygame.Rect(240, 200, 80, 80)
-        level2_button = pygame.Rect(360, 200, 80, 80)
-        level3_button = pygame.Rect(480, 200, 80, 80)
-        level4_button = pygame.Rect(240, 320, 80, 80)
-        level5_button = pygame.Rect(360, 320, 80, 80)
-        level6_button = pygame.Rect(480, 320, 80, 80)
-
-        if level1_button.collidepoint((mx, my)):
-            pygame.draw.circle(screen, (45, 55, 85), (level1_button.center), 40)
-            if level_click:
-                level1()
-                level_click = False
-        else:
-            pygame.draw.circle(screen, (60, 70, 100), (level1_button.center), 40)
-
-
-        if level2_button.collidepoint((mx, my)):
-            pygame.draw.circle(screen, (45, 55, 85), (level2_button.center), 40)
-            if level_click:
-                level2()
-                level_click = False
-        else:
-            pygame.draw.circle(screen, (60, 70, 100), (level2_button.center), 40)
-
         
-        if level3_button.collidepoint((mx, my)):
-            pygame.draw.circle(screen, (45, 55, 85), (level3_button.center), 40)
-            if level_click:
-                level3()
-                level_click = False
-        else:
-            pygame.draw.circle(screen, (60, 70, 100), (level3_button.center), 40)
-
+        play_btn = pygame.Rect(300, 300, 200, 50)
+        quit_btn = pygame.Rect(300, 380, 200, 50)
         
-        if level4_button.collidepoint((mx, my)):
-            pygame.draw.circle(screen, (45, 55, 85), (level4_button.center), 40)
-            if level_click:
-                level4()
-                level_click = False
-        else:
-            pygame.draw.circle(screen, (60, 70, 100), (level4_button.center), 40)
-
-
-        if level5_button.collidepoint((mx, my)):
-            pygame.draw.circle(screen, (45, 55, 85), (level5_button.center), 40)
-            if level_click:
-                level5()
-                level_click = False
-        else:
-            pygame.draw.circle(screen, (60, 70, 100), (level5_button.center), 40)
-
-
-        if level6_button.collidepoint((mx, my)):
-            pygame.draw.circle(screen, (45, 55, 85), (level6_button.center), 40)
-            if level_click:
-                level6()
-                level_click = False
-        else:
-            pygame.draw.circle(screen, (60, 70, 100), (level6_button.center), 40)
-
-
-        level_texts = [
-            (level1_button.center, "1"),
-            (level2_button.center, "2"),
-            (level3_button.center, "3"),
-            (level4_button.center, "4"),
-            (level5_button.center, "5"),
-            (level6_button.center, "6"),
-        ]
-
-        for pos, label in level_texts:
-            text = levels_font.render(label, True, (255, 255, 255))
-            screen.blit(text, text.get_rect(center = pos))
-
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    instructions_screen()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    level_click = True
-
+        play_color = (45, 55, 85) if play_btn.collidepoint((mx, my)) else (60, 70, 100)
+        quit_color = (45, 55, 85) if quit_btn.collidepoint((mx, my)) else (60, 70, 100)
+        
+        pygame.draw.rect(self.screen, play_color, play_btn, border_radius=10)
+        pygame.draw.rect(self.screen, quit_color, quit_btn, border_radius=10)
+        
+        play_text = self.menu_font_3.render("PLAY", True, (255, 255, 255))
+        quit_text = self.menu_font_3.render("QUIT", True, (255, 255, 255))
+        
+        self.screen.blit(play_text, play_text.get_rect(center=play_btn.center))
+        self.screen.blit(quit_text, quit_text.get_rect(center=quit_btn.center))
+        
+        if self.click:
+            if play_btn.collidepoint((mx, my)):
+                self.start_level(1)
+                self.click = False
+            if quit_btn.collidepoint((mx, my)):
+                self.running = False
+                self.click = False
+        
         pygame.display.update()
-        clock.tick(60)
-
-
-def show_score(x, y):
-    score = font.render("Score: " + str(score_value), True, (255, 255, 255))
-    screen.blit(score, (x, y))
-
-
-def game_over_text():
-    global gameover
-    global high_score
-    global score_value
-    over_text = over_font.render("GAME OVER", True, (255, 255, 255))
-    over_text_rect = over_text.get_rect(center = (400, 250))
-    screen.blit(over_text, over_text_rect)
-
-    if score_value > high_score:
-        high_score = score_value
-
-    score_text = score_font.render("High Score: " + str(high_score), True, (255, 255, 255))
-    score_text_rect = score_text.get_rect(center = (400, 300))
-    screen.blit(score_text, score_text_rect)
-
-    play_again_text = again_font.render("Press 'E' to play again", True, (255, 255, 255))
-    play_again_text_rect = play_again_text.get_rect(center = (400, 340))
-    screen.blit(play_again_text, play_again_text_rect)
-
-    # game_over_sound = mixer.Sound('game_over.wav')
-    # game_over_sound.play()
-    pygame.mixer.music.stop()
-    gameover = True
-
-
-def player(x, y):
-    screen.blit(playerImg, (x, y))
-
-
-def enemy(x, y, i):
-    screen.blit(enemyImg[i], (x, y))
-
-
-def fire_projectile(x, y):
-    global projectile_status
-    projectile_status = "fire"
-    screen.blit(projectileImg, (x + 16, y + 10))
-
-
-def isCollision(enemyX, enemyY, projectileX, projectileY):
-    distance = math.sqrt(math.pow(enemyX - projectileX, 2) + math.pow(enemyY - projectileY, 2))
-    if distance < 32:
-        return True
-    else:
-        return False
+        self.clock.tick(self.FPS)
     
-
-screen_shake = 0
-
-
-# Level One
-def level1():
-    global playerX, playerY, playerX_change
-    global projectileX, projectileY, projectile_status, score_value, gameover
-    global music_stopped
-    global num_of_enemies, asteroid_images
-    global projectileY_change
-    global lives, livesImg, lives_shown
-    global screen_shake
-
-    render_offset = [0, 0]
-
-    music_stopped = False
-
-    projectileY_change = 7
+    def _draw_pause_menu(self):
+        """Draw pause menu."""
+        self.screen.fill((0, 0, 0))
+        self.overlay.fill((0, 0, 0, 180))
+        self.screen.blit(self.overlay, (0, 0))
+        
+        pause_text = self.menu_font.render("PAUSED", True, (100, 150, 255))
+        self.screen.blit(pause_text, pause_text.get_rect(center=(400, 150)))
+        
+        instructions = self.menu_font_3.render("Press ESC to resume or M for menu", True, (200, 220, 255))
+        self.screen.blit(instructions, instructions.get_rect(center=(400, 270)))
+        
+        pygame.display.update()
+        self.clock.tick(self.FPS)
     
-    mixer.music.play(-1)
-
-    num_of_enemies = 1
-    for i in range(num_of_enemies):
-        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
-        enemyX.append(random.randint(0, 765))
-        enemyY.append(random.randint(0, 50))
-        enemyY_change.append(2)
-
-    running = True
-    while running:
-
-        # Background Color (rgb)
-        screen.fill((0, 0, 0))
-        screen.blit(background1, (render_offset[0], render_offset[1]))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and not gameover:
-                    playerX_change = -7
-                if event.key == pygame.K_RIGHT and not gameover:
-                    playerX_change = 7
-                if event.key == pygame.K_SPACE and not gameover:
-                    if projectile_status == "ready":
-                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
-                        projectile_Sound.play()
-                        projectile_Sound.set_volume(0.25)
-                        projectileX = playerX
-                        fire_projectile(projectileX, projectileY)
-                if event.key == pygame.K_m and not music_stopped:
-                    mixer.music.stop()
-                    music_stopped = True
-                elif event.key == pygame.K_m and music_stopped:
-                    mixer.music.play()
-                    music_stopped = False
-                if event.key == pygame.K_ESCAPE:
-                    result = pause_menu()
-                    if result == "menu":
-                        running = False
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    playerX_change = 0
-                if event.key == pygame.K_e and gameover:
-                    projectile_status = "ready"
-                    score_value = 0
-                    lives = 3
-                    lives_shown = [True, True, True]
-                    gameover = False
-                    mixer.music.play(-1)
-                    playerX = 370
-                    playerY = 480
-                    for i in range(num_of_enemies):
-                        enemyX[i] = random.randint(0, 765)
-                        enemyY[i] = random.randint(0, 50)
-
-        playerX += playerX_change
-
-        if playerX <= 0:
-            playerX = 0
-        elif playerX >= 736:
-            playerX = 736
-
-        for i in range(num_of_enemies):
-            if enemyY[i] > 500:
-                if lives == 1:
-                    for j in range(num_of_enemies):
-                        enemyY[j] = 2000
-                    game_over_text()
-                    with open('file.txt', 'w') as file:
-                        file.write(str(high_score))
-                    break
-
-            enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 520:
-                screen_shake = 30
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                lives -= 1
-
-            
-            if screen_shake > 0:
-                render_offset[0] = random.randint(0, 8) - 4
-                render_offset[1] = random.randint(0, 8) - 4
-                screen_shake -= 1
-            else:
-                render_offset = [0, 0]
-
-
-
-            if lives == 2:
-                lives_shown = [False, True, True]
-            if lives == 1:
-                lives_shown = [False, False, True]
-            if lives == 0:
-                lives_shown = [False, False, False]
-
-            if lives_shown[0]:
-                screen.blit(livesImg, (680, 12))
-            if lives_shown[1]:
-                screen.blit(livesImg, (720, 12))
-            if lives_shown[2] and lives >= 1:
-                screen.blit(livesImg, (760, 12))
-
-            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
-                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
-                collision_Sound.play()
-                collision_Sound.set_volume(0.7)
-                projectileY = 480
-                projectile_status = "ready"
-                score_value += 1
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
-
-            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
-
-        if projectileY <= 0:
-            projectileY = 480
-            projectile_status = "ready"
-
-        if projectile_status == "fire":
-            fire_projectile(projectileX + render_offset[0], projectileY + render_offset[1])
-            projectileY -= projectileY_change
-
-        player(playerX + render_offset[0], playerY + render_offset[1])
-        show_score(textX, textY)
-        pygame.display.update()
-        clock.tick(60)
-
-
-
-# Level Two
-def level2():
-    global playerX, playerY, playerX_change
-    global projectileX, projectileY, projectile_status, score_value, gameover
-    global music_stopped
-    global projectileY_change
-    global lives, livesImg, lives_shown
-    global screen_shake
-
-    render_offset = [0, 0]
-
-    projectileY_change = 8
-
-    mixer.music.play(-1)
-
-    num_of_enemies = 2
-    for i in range(num_of_enemies):
-        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
-        enemyX.append(random.randint(0, 765))
-        enemyY.append(random.randint(0, 50))
-        enemyY_change.append(2)
-
-
-    running = True
-    while running:
-
-        # Background Color (rgb)
-        screen.fill((0, 0, 0))
-        screen.blit(background2, (render_offset[0], render_offset[1]))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and not gameover:
-                    playerX_change = -7
-                if event.key == pygame.K_RIGHT and not gameover:
-                    playerX_change = 7
-                if event.key == pygame.K_SPACE and not gameover:
-                    if projectile_status == "ready":
-                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
-                        projectile_Sound.play()
-                        projectile_Sound.set_volume(0.25)
-                        projectileX = playerX
-                        fire_projectile(projectileX, projectileY)
-                if event.key == pygame.K_m and not music_stopped:
-                    mixer.music.stop()
-                    music_stopped = True
-                elif event.key == pygame.K_m and music_stopped:
-                    mixer.music.play()
-                    music_stopped = False
-                if event.key == pygame.K_ESCAPE:
-                    result = pause_menu()
-                    if result == "menu":
-                        running = False
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    playerX_change = 0
-                if event.key == pygame.K_e and gameover:
-                    projectile_status = "ready"
-                    score_value = 0
-                    lives = 3
-                    lives_shown = [True, True, True]
-                    gameover = False
-                    mixer.music.play(-1)
-                    playerX = 370
-                    playerY = 480
-                    for i in range(num_of_enemies):
-                        enemyX[i] = random.randint(0, 765)
-                        enemyY[i] = random.randint(0, 50)
-
-        playerX += playerX_change
-
-        if playerX <= 0:
-            playerX = 0
-        elif playerX >= 736:
-            playerX = 736
-
+    def _draw_game_over(self):
+        """Draw game over screen."""
+        self.screen.fill((0, 0, 0))
         
-        for i in range(num_of_enemies):
-            if enemyY[i] > 500:
-                if lives == 1:
-                    for j in range(num_of_enemies):
-                        enemyY[j] = 2000
-                    game_over_text()
-                    with open('file.txt', 'w') as file:
-                        file.write(str(high_score))
-                    break
-
-            enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 520:
-                screen_shake = 30
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                lives -= 1
-
-            
-            if screen_shake > 0:
-                render_offset[0] = random.randint(0, 8) - 4
-                render_offset[1] = random.randint(0, 8) - 4
-                screen_shake -= 1
-            else:
-                render_offset = [0, 0]
-
-
-            if lives == 2:
-                lives_shown = [False, True, True]
-            if lives == 1:
-                lives_shown = [False, False, True]
-            if lives == 0:
-                lives_shown = [False, False, False]
-
-            if lives_shown[0]:
-                screen.blit(livesImg, (680, 12))
-            if lives_shown[1]:
-                screen.blit(livesImg, (720, 12))
-            if lives_shown[2] and lives >= 1:
-                screen.blit(livesImg, (760, 12))
-
-
-            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
-                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
-                collision_Sound.play()
-                collision_Sound.set_volume(0.7)
-                projectileY = 480
-                projectile_status = "ready"
-                score_value += 1
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
-
-            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
-
-        if projectileY <= 0:
-            projectileY = 480
-            projectile_status = "ready"
-
-        if projectile_status == "fire":
-            fire_projectile(projectileX, projectileY)
-            projectileY -= projectileY_change
-
-        player(playerX + render_offset[0], playerY + render_offset[1])
-        show_score(textX, textY)
-        pygame.display.update()
-        clock.tick(60)
-
-
-# Level Three
-def level3():
-    global playerX, playerY, playerX_change
-    global projectileX, projectileY, projectile_status, score_value, gameover
-    global music_stopped
-    global projectileY_change
-    global lives, livesImg, lives_shown
-    global screen_shake
-
-    render_offset = [0, 0]
-
-    projectileY_change = 9
-
-    mixer.music.play(-1)
-
-    num_of_enemies = 3
-    for i in range(num_of_enemies):
-        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
-        enemyX.append(random.randint(0, 765))
-        enemyY.append(random.randint(0, 50))
-        enemyY_change.append(2)
-
-
-    running = True
-    while running:
-
-        # Background Color (rgb)
-        screen.fill((0, 0, 0))
-        screen.blit(background3, (render_offset[0], render_offset[1]))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and not gameover:
-                    playerX_change = -7
-                if event.key == pygame.K_RIGHT and not gameover:
-                    playerX_change = 7
-                if event.key == pygame.K_SPACE and not gameover:
-                    if projectile_status == "ready":
-                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
-                        projectile_Sound.play()
-                        projectile_Sound.set_volume(0.25)
-                        projectileX = playerX
-                        fire_projectile(projectileX, projectileY)
-                if event.key == pygame.K_m and not music_stopped:
-                    mixer.music.stop()
-                    music_stopped = True
-                elif event.key == pygame.K_m and music_stopped:
-                    mixer.music.play()
-                    music_stopped = False
-                if event.key == pygame.K_ESCAPE:
-                    result = pause_menu()
-                    if result == "menu":
-                        running = False
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    playerX_change = 0
-                if event.key == pygame.K_e and gameover:
-                    projectile_status = "ready"
-                    score_value = 0
-                    lives = 3
-                    lives_shown = [True, True, True]
-                    gameover = False
-                    mixer.music.play(-1)
-                    playerX = 370
-                    playerY = 480
-                    for i in range(num_of_enemies):
-                        enemyX[i] = random.randint(0, 765)
-                        enemyY[i] = random.randint(0, 50)
-
-        playerX += playerX_change
-
-        if playerX <= 0:
-            playerX = 0
-        elif playerX >= 736:
-            playerX = 736
-
+        game_over = self.over_font.render("GAME OVER", True, (255, 255, 255))
+        self.screen.blit(game_over, game_over.get_rect(center=(400, 200)))
         
-        for i in range(num_of_enemies):
-            if enemyY[i] > 500:
-                if lives == 1:
-                    for j in range(num_of_enemies):
-                        enemyY[j] = 2000
-                    game_over_text()
-                    with open('file.txt', 'w') as file:
-                        file.write(str(high_score))
-                    break
-
-            enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 520:
-                screen_shake = 30
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                lives -= 1
-
-            
-            if screen_shake > 0:
-                render_offset[0] = random.randint(0, 8) - 4
-                render_offset[1] = random.randint(0, 8) - 4
-                screen_shake -= 1
-            else:
-                render_offset = [0, 0]
-
-
-            if lives == 2:
-                lives_shown = [False, True, True]
-            if lives == 1:
-                lives_shown = [False, False, True]
-            if lives == 0:
-                lives_shown = [False, False, False]
-
-            if lives_shown[0]:
-                screen.blit(livesImg, (680, 12))
-            if lives_shown[1]:
-                screen.blit(livesImg, (720, 12))
-            if lives_shown[2] and lives >= 1:
-                screen.blit(livesImg, (760, 12))
-
-            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
-                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
-                collision_Sound.play()
-                collision_Sound.set_volume(0.7)
-                projectileY = 480
-                projectile_status = "ready"
-                score_value += 1
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
-
-            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
-
-        if projectileY <= 0:
-            projectileY = 480
-            projectile_status = "ready"
-
-        if projectile_status == "fire":
-            fire_projectile(projectileX, projectileY)
-            projectileY -= projectileY_change
-
-        player(playerX + render_offset[0], playerY + render_offset[1])
-        show_score(textX, textY)
-        pygame.display.update()
-        clock.tick(60)
-
-
-# Level Four
-def level4():
-    global playerX, playerY, playerX_change
-    global projectileX, projectileY, projectile_status, score_value, gameover
-    global music_stopped
-    global projectileY_change
-    global lives, livesImg, lives_shown
-    global screen_shake
-
-    render_offset = [0, 0]
-
-    projectileY_change = 10
-
-    mixer.music.play(-1)
-
-    num_of_enemies = 4
-    for i in range(num_of_enemies):
-        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
-        enemyX.append(random.randint(0, 765))
-        enemyY.append(random.randint(0, 50))
-        enemyY_change.append(2)
-
-
-    running = True
-    while running:
-
-        # Background Color (rgb)
-        screen.fill((0, 0, 0))
-        screen.blit(background4, (render_offset[0], render_offset[1]))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and not gameover:
-                    playerX_change = -7
-                if event.key == pygame.K_RIGHT and not gameover:
-                    playerX_change = 7
-                if event.key == pygame.K_SPACE and not gameover:
-                    if projectile_status == "ready":
-                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
-                        projectile_Sound.play()
-                        projectile_Sound.set_volume(0.25)
-                        projectileX = playerX
-                        fire_projectile(projectileX, projectileY)
-                if event.key == pygame.K_m and not music_stopped:
-                    mixer.music.stop()
-                    music_stopped = True
-                elif event.key == pygame.K_m and music_stopped:
-                    mixer.music.play()
-                    music_stopped = False
-                if event.key == pygame.K_ESCAPE:
-                    result = pause_menu()
-                    if result == "menu":
-                        running = False
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    playerX_change = 0
-                if event.key == pygame.K_e and gameover:
-                    projectile_status = "ready"
-                    score_value = 0
-                    lives = 3
-                    lives_shown = [True, True, True]
-                    gameover = False
-                    mixer.music.play(-1)
-                    playerX = 370
-                    playerY = 480
-                    for i in range(num_of_enemies):
-                        enemyX[i] = random.randint(0, 765)
-                        enemyY[i] = random.randint(0, 50)
-
-        playerX += playerX_change
-
-        if playerX <= 0:
-            playerX = 0
-        elif playerX >= 736:
-            playerX = 736
-
+        high_score_text = self.score_font.render(f"High Score: {self.high_score}", True, (255, 255, 255))
+        self.screen.blit(high_score_text, high_score_text.get_rect(center=(400, 280)))
         
-        for i in range(num_of_enemies):
-            if enemyY[i] > 500:
-                if lives == 1:
-                    for j in range(num_of_enemies):
-                        enemyY[j] = 2000
-                    game_over_text()
-                    with open('file.txt', 'w') as file:
-                        file.write(str(high_score))
-                    break
-
-            enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 520:
-                screen_shake = 30
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                lives -= 1
-
-            
-            if screen_shake > 0:
-                render_offset[0] = random.randint(0, 8) - 4
-                render_offset[1] = random.randint(0, 8) - 4
-                screen_shake -= 1
-            else:
-                render_offset = [0, 0]
-
-
-            if lives == 2:
-                lives_shown = [False, True, True]
-            if lives == 1:
-                lives_shown = [False, False, True]
-            if lives == 0:
-                lives_shown = [False, False, False]
-
-            if lives_shown[0]:
-                screen.blit(livesImg, (680, 12))
-            if lives_shown[1]:
-                screen.blit(livesImg, (720, 12))
-            if lives_shown[2] and lives >= 1:
-                screen.blit(livesImg, (760, 12))
-
-            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
-                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
-                collision_Sound.play()
-                collision_Sound.set_volume(0.7)
-                projectileY = 480
-                projectile_status = "ready"
-                score_value += 1
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
-
-            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
-
-        if projectileY <= 0:
-            projectileY = 480
-            projectile_status = "ready"
-
-        if projectile_status == "fire":
-            fire_projectile(projectileX, projectileY)
-            projectileY -= projectileY_change
-
-        player(playerX + render_offset[0], playerY + render_offset[1])
-        show_score(textX, textY)
-        pygame.display.update()
-        clock.tick(60)
-
-
-# Level Five
-def level5():
-    global playerX, playerY, playerX_change
-    global projectileX, projectileY, projectile_status, score_value, gameover
-    global music_stopped
-    global projectileY_change
-    global lives, livesImg, lives_shown
-    global screen_shake
-
-    render_offset = [0, 0]
-
-    projectileY_change = 11
-
-    mixer.music.play(-1)
-
-    num_of_enemies = 5
-    for i in range(num_of_enemies):
-        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
-        enemyX.append(random.randint(0, 765))
-        enemyY.append(random.randint(0, 50))
-        enemyY_change.append(2)
-
-
-    running = True
-    while running:
-
-        # Background Color (rgb)
-        screen.fill((0, 0, 0))
-        screen.blit(background5, (render_offset[0], render_offset[1]))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and not gameover:
-                    playerX_change = -7
-                if event.key == pygame.K_RIGHT and not gameover:
-                    playerX_change = 7
-                if event.key == pygame.K_SPACE and not gameover:
-                    if projectile_status == "ready":
-                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
-                        projectile_Sound.play()
-                        projectile_Sound.set_volume(0.25)
-                        projectileX = playerX
-                        fire_projectile(projectileX, projectileY)
-                if event.key == pygame.K_m and not music_stopped:
-                    mixer.music.stop()
-                    music_stopped = True
-                elif event.key == pygame.K_m and music_stopped:
-                    mixer.music.play()
-                    music_stopped = False
-                if event.key == pygame.K_ESCAPE:
-                    result = pause_menu()
-                    if result == "menu":
-                        running = False
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    playerX_change = 0
-                if event.key == pygame.K_e and gameover:
-                    projectile_status = "ready"
-                    score_value = 0
-                    lives = 3
-                    lives_shown = [True, True, True]
-                    gameover = False
-                    mixer.music.play(-1)
-                    playerX = 370
-                    playerY = 480
-                    for i in range(num_of_enemies):
-                        enemyX[i] = random.randint(0, 765)
-                        enemyY[i] = random.randint(0, 50)
-
-        playerX += playerX_change
-
-        if playerX <= 0:
-            playerX = 0
-        elif playerX >= 736:
-            playerX = 736
-
+        current_score = self.score_font.render(f"Score: {self.score}", True, (255, 255, 255))
+        self.screen.blit(current_score, current_score.get_rect(center=(400, 330)))
         
-        for i in range(num_of_enemies):
-            if enemyY[i] > 500:
-                if lives == 1:
-                    for j in range(num_of_enemies):
-                        enemyY[j] = 2000
-                    game_over_text()
-                    with open('file.txt', 'w') as file:
-                        file.write(str(high_score))
-                    break
-
-            enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 520:
-                screen_shake = 30
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                lives -= 1
-
-            
-            if screen_shake > 0:
-                render_offset[0] = random.randint(0, 8) - 4
-                render_offset[1] = random.randint(0, 8) - 4
-                screen_shake -= 1
-            else:
-                render_offset = [0, 0]
-
-
-            if lives == 2:
-                lives_shown = [False, True, True]
-            if lives == 1:
-                lives_shown = [False, False, True]
-            if lives == 0:
-                lives_shown = [False, False, False]
-
-            if lives_shown[0]:
-                screen.blit(livesImg, (680, 12))
-            if lives_shown[1]:
-                screen.blit(livesImg, (720, 12))
-            if lives_shown[2] and lives >= 1:
-                screen.blit(livesImg, (760, 12))
-
-            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
-                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
-                collision_Sound.play()
-                collision_Sound.set_volume(0.7)
-                projectileY = 480
-                projectile_status = "ready"
-                score_value += 1
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
-
-            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
-
-        if projectileY <= 0:
-            projectileY = 480
-            projectile_status = "ready"
-
-        if projectile_status == "fire":
-            fire_projectile(projectileX, projectileY)
-            projectileY -= projectileY_change
-
-        player(playerX + render_offset[0], playerY + render_offset[1])
-        show_score(textX, textY)
-        pygame.display.update()
-        clock.tick(60)
-
-
-# Level Six
-def level6():
-    global playerX, playerY, playerX_change
-    global projectileX, projectileY, projectile_status, score_value, gameover
-    global music_stopped
-    global projectileY_change
-    global lives, livesImg, lives_shown
-    global screen_shake
-
-    render_offset = [0, 0]
-
-    projectileY_change = 12
-
-    mixer.music.play(-1)
-
-    num_of_enemies = 6
-    for i in range(num_of_enemies):
-        enemyImg.append(pygame.image.load(random.choice(asteroid_images)))
-        enemyX.append(random.randint(0, 765))
-        enemyY.append(random.randint(0, 50))
-        enemyY_change.append(2)
-
-
-    running = True
-    while running:
-
-        # Background Color (rgb)
-        screen.fill((0, 0, 0))
-        screen.blit(background6, (render_offset[0], render_offset[1]))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and not gameover:
-                    playerX_change = -7
-                if event.key == pygame.K_RIGHT and not gameover:
-                    playerX_change = 7
-                if event.key == pygame.K_SPACE and not gameover:
-                    if projectile_status == "ready":
-                        projectile_Sound = mixer.Sound('./assets/music/laser.wav')
-                        projectile_Sound.play()
-                        projectile_Sound.set_volume(0.25)
-                        projectileX = playerX
-                        fire_projectile(projectileX, projectileY)
-                if event.key == pygame.K_m and not music_stopped:
-                    mixer.music.stop()
-                    music_stopped = True
-                elif event.key == pygame.K_m and music_stopped:
-                    mixer.music.play()
-                    music_stopped = False
-                if event.key == pygame.K_ESCAPE:
-                    result = pause_menu()
-                    if result == "menu":
-                        running = False
-
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                    playerX_change = 0
-                if event.key == pygame.K_e and gameover:
-                    projectile_status = "ready"
-                    score_value = 0
-                    lives = 3
-                    lives_shown = [True, True, True]
-                    gameover = False
-                    mixer.music.play(-1)
-                    playerX = 370
-                    playerY = 480
-                    for i in range(num_of_enemies):
-                        enemyX[i] = random.randint(0, 765)
-                        enemyY[i] = random.randint(0, 50)
-
-        playerX += playerX_change
-
-        if playerX <= 0:
-            playerX = 0
-        elif playerX >= 736:
-            playerX = 736
-
+        restart_text = self.menu_font_3.render("Press E to play again or ESC for menu", True, (200, 220, 255))
+        self.screen.blit(restart_text, restart_text.get_rect(center=(400, 400)))
         
-        for i in range(num_of_enemies):
-            if enemyY[i] > 500:
-                if lives == 1:
-                    for j in range(num_of_enemies):
-                        enemyY[j] = 2000
-                    game_over_text()
-                    with open('file.txt', 'w') as file:
-                        file.write(str(high_score))
-                    break
-
-            enemyY[i] += enemyY_change[i]
-            if enemyY[i] >= 520:
-                screen_shake = 30
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                lives -= 1
-
-            
-            if screen_shake > 0:
-                render_offset[0] = random.randint(0, 8) - 4
-                render_offset[1] = random.randint(0, 8) - 4
-                screen_shake -= 1
-            else:
-                render_offset = [0, 0]
-
-
-            if lives == 2:
-                lives_shown = [False, True, True]
-            if lives == 1:
-                lives_shown = [False, False, True]
-            if lives == 0:
-                lives_shown = [False, False, False]
-
-            if lives_shown[0]:
-                screen.blit(livesImg, (680, 12))
-            if lives_shown[1]:
-                screen.blit(livesImg, (720, 12))
-            if lives_shown[2] and lives >= 1:
-                screen.blit(livesImg, (760, 12))
-
-            if isCollision(enemyX[i], enemyY[i], projectileX, projectileY):
-                collision_Sound = mixer.Sound('./assets/music/explosion.wav')
-                collision_Sound.play()
-                collision_Sound.set_volume(0.7)
-                projectileY = 480
-                projectile_status = "ready"
-                score_value += 1
-                enemyX[i] = random.randint(0, 765)
-                enemyY[i] = random.randint(0, 50)
-                enemyImg[i] = pygame.image.load(random.choice(asteroid_images))
-
-            enemy(enemyX[i] + render_offset[0], enemyY[i] + render_offset[1], i)
-
-        if projectileY <= 0:
-            projectileY = 480
-            projectile_status = "ready"
-
-        if projectile_status == "fire":
-            fire_projectile(projectileX, projectileY)
-            projectileY -= projectileY_change
-
-        player(playerX + render_offset[0], playerY + render_offset[1])
-        show_score(textX, textY)
         pygame.display.update()
-        clock.tick(60)
-main_menu()
+        self.clock.tick(self.FPS)
+
+
+if __name__ == "__main__":
+    game = Game()
+    game.run()
